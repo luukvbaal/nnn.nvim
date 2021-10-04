@@ -73,7 +73,9 @@ local function read_fifo()
 					print("Read error:" .. rerr)
 				elseif chunk then
 					vim.defer_fn(function()
-						if #api.nvim_list_wins() == 1 then
+						if type(action) == "function" then
+							action(chunk:sub(1, -2))
+						elseif #api.nvim_list_wins() == 1 then
 							local win = get_win()
 							local portwidth = api.nvim_win_get_width(win)
 							local width = portwidth - cfg.explorer_width
@@ -88,6 +90,7 @@ local function read_fifo()
 							api.nvim_set_current_win(curwin)
 							cmd("edit " .. fn.fnameescape(chunk:sub(1, -2)))
 						end
+						action = nil
 					end, 0)
 				else
 					uv.fs_close(fd)
@@ -143,13 +146,16 @@ local function on_exit()
 	close()
 	local fd = io.open(pickertmp, "r")
 	if fd ~= nil then
-		if action ~= nil then
-			action(io.lines(pickertmp))
-		else
-			for line in io.lines(pickertmp) do
+		local retlines = {}
+		local act = action
+		for line in io.lines(pickertmp) do
+			if action == nil then
 				cmd("edit " .. fn.fnameescape(line))
+			else
+				table.insert(retlines, line)
 			end
 		end
+		if action ~= nil then vim.defer_fn(function() act(retlines) end,0) end
 	else
 		print("error exiting nnn")
 	end
@@ -204,7 +210,11 @@ function M.mapping(map)
 	end
 	if get_win() == nil then open_explorer() end
 	api.nvim_set_current_win(get_win())
-	api.nvim_feedkeys(api.nvim_replace_termcodes("i<CR>", true, true, true), "t", true)
+	if regex == fiforegex then
+		api.nvim_feedkeys(api.nvim_replace_termcodes("i<CR>", true, true, true), "t", true)
+	else
+		api.nvim_feedkeys(api.nvim_replace_termcodes("iq", true, true, true), "t", true)
+	end
 end
 
 function M.setup(setup_cfg)
