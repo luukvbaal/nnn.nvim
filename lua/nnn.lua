@@ -2,6 +2,7 @@ local api = vim.api
 local uv = vim.loop
 local cmd = vim.cmd
 local fn = vim.fn
+local defer = vim.defer_fn
 local pickerregex = "term://.*nnn.*-p.*";
 local fiforegex = "term://.*nnn.*-F1";
 local regex = fiforegex
@@ -18,6 +19,9 @@ local cfg = {
 	default_mode = "explorer",
 	explorer_width = 24,
 	mappings = {},
+	borderstyle = "single",
+	session = nil, -- TODO
+	layout = {} -- TODO also as mapping argument
 }
 local M = {}
 
@@ -72,7 +76,7 @@ local function read_fifo()
 				if rerr then
 					print("Read error:" .. rerr)
 				elseif chunk then
-					vim.defer_fn(function()
+					defer(function()
 						if type(action) == "function" then
 							action(chunk:sub(1, -2))
 						elseif #api.nvim_list_wins() == 1 then
@@ -127,13 +131,13 @@ local function create_float()
   local col = vim_width * 0.1 - 2
   local row = vim_height * 0.15 - 1
   local win = api.nvim_open_win(0, true, {
-      relative = 'editor',
-      width = width,
-      height = height,
-      col = col,
-      row = row,
-      style = 'minimal',
-      focusable = false
+			relative = "editor",
+			width = width,
+			height = height,
+			col = col,
+			row = row,
+			style = "minimal",
+			border = cfg.borderstyle
     })
 	if #api.nvim_list_bufs() == 1 or get_buf() == nil then
 		local buf = api.nvim_create_buf(true, false)
@@ -155,7 +159,7 @@ local function on_exit()
 				table.insert(retlines, line)
 			end
 		end
-		if action ~= nil then vim.defer_fn(function() act(retlines) end,0) end
+		if action ~= nil then defer(function() act(retlines) end,0) end
 	else
 		print("error exiting nnn")
 	end
@@ -247,7 +251,7 @@ function M.setup(setup_cfg)
 		vim.g.loaded_netrw = 1
 		vim.g.loaded_netrwPlugin = 1
 		api.nvim_buf_delete(0, {})
-		vim.defer_fn(function() M.toggle("picker") end, 0)
+		defer(function() M.toggle("picker") end, 0)
 	end
 end
 
