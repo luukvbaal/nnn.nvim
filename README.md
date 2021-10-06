@@ -52,9 +52,20 @@ local cfg = {
 		},
 		session = "", -- or global/local/shared
 	},
-	replace_netrw = nil, or explorer/picker
-	mappings = {}, table containing mappings, see below
+	replace_netrw = nil, -- or explorer/picker
+	mappings = {}, -- table containing mappings, see below
 }
+```
+Edit (part of) this table to your preferences and pass it to the `setup()` function i.e.:
+```lua
+	require("nnn").setup({
+		picker = { 
+			cmd = "tmux new-session nnn -Pp",
+			style = { border = "rounded" },
+			session = "shared",
+		}
+		replace_netrw = "picker" 
+	})
 ```
 
 ### Mappings
