@@ -29,7 +29,7 @@ local cfg = {
 	},
 	picker = {
 		cmd = "nnn",
-		style = { width = 0.9, height = 0.8, xoffset = 0.5, yoffset = 0.5, border = "rounded" },
+		style = { width = 0.9, height = 0.8, xoffset = 0.5, yoffset = 0.5, border = "single" },
 		session = "",
 	},
 	replace_netrw = nil,
@@ -215,14 +215,15 @@ function M.toggle(mode)
 end
 
 function M.handle_mapping(map)
-	local exit
+	local quit
 	api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n>", true, true, true), "t", true)
 	local mapping = cfg.mappings[tonumber(map)][2]
 	if type(mapping) == "function" then
 		action = mapping
+		quit = false
 	elseif type(mapping) == "table" then
 		action = mapping[1]
-		exit = mapping[2]
+		quit = mapping.quit
 	else
 		if mapping:match("tab") then
 			cmd(mapping)
@@ -234,7 +235,7 @@ function M.handle_mapping(map)
 	end
 	api.nvim_set_current_win(get_win())
 	if api.nvim_buf_get_name(0):match("NnnExplorer") then
-		api.nvim_feedkeys(api.nvim_replace_termcodes("i" .. (exit and "q" or "<CR>"), true, true, true), "t", true)
+		api.nvim_feedkeys(api.nvim_replace_termcodes("i" .. (quit and "q" or "<CR>"), true, true, true), "t", true)
 	else
 		api.nvim_feedkeys(api.nvim_replace_termcodes("iq", true, true, true), "t", true)
 	end
