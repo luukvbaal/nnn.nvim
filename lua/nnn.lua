@@ -6,10 +6,21 @@ local defer = vim.defer_fn
 local min = math.min
 local max = math.max
 local floor = math.floor
+-- forward declarations
+local curwin
+local action
+local bufmatch
+local pickersession
+local explorersession
+local M = {}
+-- initialization
 local pickertmp = fn.tempname() .. "-picker"
 local explorertmp = fn.tempname() .. "-explorer"
 local exploreropts = os.getenv("NNN_OPTS"):gsub("a", "")
-local sessionfile
+local sessionfile = os.getenv("XDG_CONFIG_HOME")
+sessionfile = ((sessionfile ~= nil) and sessionfile or (os.getenv("HOME") .. ".config")) ..
+		"/nnn/sessions/nnn.nvim-" .. os.date("%Y-%m-%d_%H-%M-%S")
+
 local cfg = {
 	explorer = {
 		cmd = "nnn",
@@ -25,14 +36,6 @@ local cfg = {
 	mappings = {},
 }
 
--- forward declarations
-local curwin
-local action
-local bufmatch
-local pickersession
-local explorersession
-
-local M = {}
 
 local function get_buf()
  	for _, buf in pairs(api.nvim_list_bufs()) do
@@ -82,20 +85,18 @@ local function read_fifo()
 			local fpipe = uv.new_pipe(false)
 			uv.pipe_open(fpipe, fd)
 			uv.read_start(fpipe, function(rerr, chunk)
-				if rerr then
-					print("Read error:" .. rerr)
-				elseif chunk then
+				if not rerr and chunk then
 					defer(function()
 						if type(action) == "function" then
 							action({ chunk:sub(1, -2) })
 						elseif #api.nvim_list_wins() == 1 then
 							local win = get_win()
 							local portwidth = api.nvim_win_get_width(win)
-							local width = portwidth - cfg.explorer.style.width
+							local width = portwidth - cfg.explorer.width
 							cmd(width .. "vsplit " .. fn.fnameescape(chunk:sub(1, -2)))
 							curwin = api.nvim_tabpage_get_win(0)
 							api.nvim_set_current_win(win)
-							-- TODO replace workaround for nnn shifting out of viewport
+							-- workaround for nnn shifting out of viewport
 							cmd("vertical " .. win .. "resize " .. portwidth)
 							cmd("vertical " .. win .. "resize " .. width)
 							api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n><C-W>l", true, true, true), "t", true)
@@ -105,9 +106,8 @@ local function read_fifo()
 						end
 						action = nil
 					end, 0)
-				else
-					uv.fs_close(fd)
 				end
+				uv.fs_close(fd)
 			end)
 		end
 	end)
@@ -269,23 +269,21 @@ function M.setup(setup_cfg)
 		defer(function() M.toggle(cfg.replace_netrw) end, 0)
 	end
 
-	sessionfile = os.getenv("XDG_CONFIG_HOME")
-	sessionfile = ((sessionfile ~= nil) and sessionfile or (os.getenv("HOME") .. ".config")) .. "/nnn/sessions/nnn.nvim-" .. os.date("%Y-%m-%d_%H-%M-%S")
 	if ((cfg.picker.session or cfg.explorer.session) == "shared") then
 		pickersession = " -S -s " .. sessionfile
 		explorersession = pickersession
-		cmd("augroup NnnSharedSession | autocmd! VimLeavePre * call delete(fnameescape('".. sessionfile .."')) | augroup End")
+		cmd("autocmd VimLeavePre * call delete(fnameescape('".. sessionfile .."'))")
 	else
 		if cfg.picker.session == "global" then pickersession = " -S "
 		elseif cfg.picker.session == "local" then
 			pickersession = " -S -s " .. sessionfile .. "-picker"
-			cmd("augroup NnnPickerSession | autocmd! VimLeavePre * call delete(fnameescape('".. sessionfile .. "-picker')) | augroup End")
+			cmd("autocmd VimLeavePre * call delete(fnameescape('".. sessionfile .. "-picker'))")
 		else pickersession = "" end
 
 		if cfg.explorer.session == "global" then explorersession = " -S "
 		elseif cfg.explorer.session == "local" then
 			explorersession = " -S -s " .. sessionfile .. "-explorer"
-			cmd("augroup NnnExplorerSession | autocmd! VimLeavePre * call delete(fnameescape('".. sessionfile .. "-explorer')) | augroup End")
+			cmd("autocmd VimLeavePre * call delete(fnameescape('".. sessionfile .. "-explorer'))")
 		else explorersession = "" end
 	end
 
@@ -295,7 +293,6 @@ function M.setup(setup_cfg)
 		autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
 		autocmd TermClose * if &ft ==# "nnn" | :bdelete! | endif
 	]]
-	M.cfg = cfg
 end
 
 return M
