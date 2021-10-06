@@ -42,7 +42,7 @@ In this mode only the `-p` flag is active. Picker mode implies only a single sel
 ```lua
 local cfg = {
 	explorer = {
-		cmd = "nnn", -- command overrride (-p and -F1 flags are implied)
+		cmd = "nnn", -- command overrride (-p and -F1 flags are implied, -a flag is invalid!)
 		width = 24, -- width of the vertical split
 		session = "", -- or global/local/shared
 	},

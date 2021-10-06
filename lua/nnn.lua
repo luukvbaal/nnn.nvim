@@ -84,7 +84,7 @@ end
 local function read_fifo()
 	uv.fs_open(explorertmp, "r+", 438, function(ferr, fd)
 		if ferr then
-			print("Error opening pipe for reading:" .. ferr)
+			error("Error opening pipe for reading:" .. ferr .. "\n Avoid running nnn with the -a flag!")
 		else
 			local fpipe = uv.new_pipe(false)
 			uv.pipe_open(fpipe, fd)
