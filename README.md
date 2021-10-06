@@ -17,7 +17,7 @@ Install with [packer](https://github.com/wbthomason/packer.nvim):
 ```lua
 use {
 	"luukvbaal/nnn.nvim",
-	config = function() require("nvim-tree").setup() end
+	config = function() require("nnn").setup() end
 }
 ```
 ## Usage
