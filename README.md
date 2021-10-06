@@ -12,6 +12,8 @@ Then install the plugin using your plugin manager:
 Install with [vim-plug](https://github.com/junegunn/vim-plug):
 ```vim
 Plug 'luukvbaal/nnn.nvim'
+call plug#end()
+
 lua << EOF
 require("nnn").setup()
 EOF
