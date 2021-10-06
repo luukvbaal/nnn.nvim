@@ -6,7 +6,6 @@ local defer = vim.defer_fn
 local min = math.min
 local max = math.max
 local floor = math.floor
-local bufmatch
 local pickertmp = fn.tempname() .. "-picker"
 local explorertmp = fn.tempname() .. "-explorer"
 local exploreropts = os.getenv("NNN_OPTS"):gsub("a", "")
@@ -25,17 +24,20 @@ local cfg = {
 	replace_netrw = nil,
 	mappings = {},
 }
+
 -- forward declarations
 local curwin
 local action
+local bufmatch
 local pickersession
 local explorersession
+
 local M = {}
 
 local function get_buf()
  	for _, buf in pairs(api.nvim_list_bufs()) do
 		local buf_name = api.nvim_buf_get_name(buf)
-		if string.match(buf_name, bufmatch) ~= nil then return buf end
+		if buf_name:match(bufmatch) ~= nil then return buf end
 	end
 	return nil
 end
@@ -43,7 +45,7 @@ end
 local function get_win()
  	for _, win in pairs(api.nvim_tabpage_list_wins(api.nvim_tabpage_get_number(0))) do
 		local buf_name = api.nvim_buf_get_name(api.nvim_win_get_buf(win))
-		if string.match(buf_name, bufmatch) ~= nil then return win end
+		if buf_name:match(bufmatch) ~= nil then return win end
 	end
   return nil
 end
@@ -215,7 +217,6 @@ end
 function M.handle_mapping(map)
 	local exit
 	api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n>", true, true, true), "t", true)
-	api.nvim_set_current_win(curwin)
 	local mapping = cfg.mappings[tonumber(map)][2]
 	if type(mapping) == "function" then
 		action = mapping
@@ -223,11 +224,16 @@ function M.handle_mapping(map)
 		action = mapping[1]
 		exit = mapping[2]
 	else
-		cmd(mapping)
+		if mapping:match("tab") then
+			cmd(mapping)
+			open_explorer()
+		else
+			api.nvim_set_current_win(curwin)
+			cmd(mapping)
+		end
 	end
-	if get_win() == nil then open_explorer() end
 	api.nvim_set_current_win(get_win())
-	if api.nvim_buf_get_name(0) == "NnnPicker" then
+	if api.nvim_buf_get_name(0):match("NnnExplorer") then
 		api.nvim_feedkeys(api.nvim_replace_termcodes("i" .. (exit and "q" or "<CR>"), true, true, true), "t", true)
 	else
 		api.nvim_feedkeys(api.nvim_replace_termcodes("iq", true, true, true), "t", true)
