@@ -106,8 +106,9 @@ local function read_fifo()
 						end
 						action = nil
 					end, 0)
+				else
+					uv.fs_close(fd)
 				end
-				uv.fs_close(fd)
 			end)
 		end
 	end)
