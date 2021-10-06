@@ -242,17 +242,19 @@ function M.handle_mapping(map)
 end
 
 function M.setup(setup_cfg)
-	local function merge(t1, t2)
-	    for k, v in pairs(t2) do
-	        if (type(v) == "table") and (type(t1[k] or false) == "table") then
-	            merge(t1[k], t2[k])
-	        else
-	            t1[k] = v
-	        end
-	    end
-	    return t1
+	if setup_cfg ~= nil then
+		local function merge(t1, t2)
+		    for k, v in pairs(t2) do
+		        if (type(v) == "table") and (type(t1[k] or false) == "table") then
+		            merge(t1[k], t2[k])
+		        else
+		            t1[k] = v
+		        end
+		    end
+		    return t1
+		end
+		merge(cfg, setup_cfg)
 	end
-	merge(cfg, setup_cfg)
 
   local bufnr = api.nvim_get_current_buf()
   local bufname = api.nvim_buf_get_name(bufnr)
