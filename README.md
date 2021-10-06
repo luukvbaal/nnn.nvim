@@ -11,7 +11,10 @@ Then install the plugin using your plugin manager:
 
 Install with [vim-plug](https://github.com/junegunn/vim-plug):
 ```vim
-Plug "luukvbaal/nnn.nvim"
+Plug 'luukvbaal/nnn.nvim'
+lua << EOF
+require("nnn").setup()
+EOF
 ```
 Install with [packer](https://github.com/wbthomason/packer.nvim):
 ```lua
@@ -59,12 +62,12 @@ local cfg = {
 Edit (part of) this table to your preferences and pass it to the `setup()` function i.e.:
 ```lua
 	require("nnn").setup({
-		picker = { 
+		picker = {
 			cmd = "tmux new-session nnn -Pp",
 			style = { border = "rounded" },
 			session = "shared",
 		}
-		replace_netrw = "picker" 
+		replace_netrw = "picker"
 	})
 ```
 
