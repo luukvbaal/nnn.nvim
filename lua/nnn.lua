@@ -12,6 +12,7 @@ local action
 local bufmatch
 local pickersession
 local explorersession
+local startdir = ""
 local M = {}
 -- initialization
 local pickertmp = fn.tempname() .. "-picker"
@@ -140,7 +141,8 @@ local function open_explorer()
 	local buf = get_buf()
 	if buf == nil then
 		cmd("topleft" .. cfg.explorer.width .. "vnew")
-		fn.termopen(cfg.explorer.cmd .. " -p " .. pickertmp .. explorersession .. " -F1", { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit })
+		fn.termopen(cfg.explorer.cmd .. " -p " .. pickertmp .. explorersession .. " -F1 " .. startdir, { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit })
+		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
 		api.nvim_buf_set_keymap(get_buf(), "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
@@ -185,7 +187,8 @@ local function open_picker()
 	local win = create_float()
 	local buf = get_buf()
 	if buf == nil then
-		fn.termopen(cfg.picker.cmd .. " -p " .. pickertmp .. pickersession, { on_exit = on_exit })
+		fn.termopen(cfg.picker.cmd .. " -p " .. pickertmp .. pickersession .. " " .. startdir, { on_exit = on_exit })
+		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
 		api.nvim_buf_set_keymap(get_buf(), "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
@@ -271,6 +274,7 @@ function M.setup(setup_cfg)
 		vim.g.loaded_netrwSettings = 1
 		vim.g.loaded_netrwFileHandlers = 1
 		api.nvim_buf_delete(0, {})
+		if is_dir then startdir = bufname end
 		defer(function() M.toggle(cfg.replace_netrw) end, 0)
 	end
 
