@@ -142,7 +142,7 @@ local function open_explorer()
 		cmd("topleft" .. cfg.explorer.width .. "vnew")
 		fn.termopen(cfg.explorer.cmd .. " -p " .. pickertmp .. explorersession .. " -F1", { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit })
 		api.nvim_buf_set_name(0, bufmatch)
-		cmd("setlocal nonumber norelativenumber winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
+		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
 		api.nvim_buf_set_keymap(get_buf(), "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
 		for i = 1, #cfg.mappings do
 			api.nvim_buf_set_keymap(get_buf(), "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
@@ -175,7 +175,7 @@ local function create_float()
     })
 	if #api.nvim_list_bufs() == 1 or get_buf() == nil then
 		local buf = api.nvim_create_buf(true, false)
-		cmd("keepalt b" .. buf)
+		cmd("keepalt buffer" .. buf)
 	end
 	return win
 end
@@ -187,7 +187,7 @@ local function open_picker()
 	if buf == nil then
 		fn.termopen(cfg.picker.cmd .. " -p " .. pickertmp .. pickersession, { on_exit = on_exit })
 		api.nvim_buf_set_name(0, bufmatch)
-		cmd("setlocal nonumber norelativenumber winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
+		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
 		api.nvim_buf_set_keymap(get_buf(), "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
 		for i = 1, #cfg.mappings do
 			api.nvim_buf_set_keymap(get_buf(), "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
