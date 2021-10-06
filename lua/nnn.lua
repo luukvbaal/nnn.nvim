@@ -94,7 +94,7 @@ local function read_fifo()
 							local win = get_win()
 							local portwidth = api.nvim_win_get_width(win)
 							local width = portwidth - cfg.explorer.width
-							cmd(width .. "vsplit " .. fn.fnameescape(chunk:sub(1, -2)))
+							cmd("botright " .. width .. "vsplit " .. fn.fnameescape(chunk:sub(1, -2)))
 							curwin = api.nvim_tabpage_get_win(0)
 							api.nvim_set_current_win(win)
 							-- workaround for nnn shifting out of viewport
