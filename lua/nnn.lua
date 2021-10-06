@@ -16,7 +16,8 @@ local M = {}
 -- initialization
 local pickertmp = fn.tempname() .. "-picker"
 local explorertmp = fn.tempname() .. "-explorer"
-local exploreropts = os.getenv("NNN_OPTS"):gsub("a", "")
+local nnnopts = os.getenv("NNN_OPTS")
+local exploreropts = (nnnopts ~= nil) and nnnopts:gsub("a", "") or ""
 local sessionfile = os.getenv("XDG_CONFIG_HOME")
 sessionfile = ((sessionfile ~= nil) and sessionfile or (os.getenv("HOME") .. ".config")) ..
 		"/nnn/sessions/nnn.nvim-" .. os.date("%Y-%m-%d_%H-%M-%S")
