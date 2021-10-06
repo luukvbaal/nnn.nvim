@@ -1,6 +1,7 @@
 # nnn.nvim
 
 File manager for Neovim powered by [nnn](https://github.com/jarun/nnn).
+![img](https://i.imgur.com/mtpBKUl.png)
 
 ## Install
 
