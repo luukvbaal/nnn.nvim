@@ -3,32 +3,39 @@ local uv = vim.loop
 local cmd = vim.cmd
 local fn = vim.fn
 local defer = vim.defer_fn
-local pickerregex = "term://.*nnn.*-p.*";
-local fiforegex = "term://.*nnn.*-F1";
-local regex = fiforegex
+local min = math.min
+local max = math.max
+local floor = math.floor
+local bufmatch
+local pickertmp = fn.tempname() .. "-picker"
+local explorertmp = fn.tempname() .. "-explorer"
+local exploreropts = os.getenv("NNN_OPTS"):gsub("a", "")
+local sessionfile
+local cfg = {
+	explorer = {
+		cmd = "nnn",
+		width = 24,
+		session = "",
+	},
+	picker = {
+		cmd = "nnn",
+		style = { width = 0.9, height = 0.8, xoffset = 0.5, yoffset = 0.5, border = "rounded" },
+		session = "",
+	},
+	replace_netrw = nil,
+	mappings = {},
+}
+-- forward declarations
 local curwin
 local action
-local pickertmp = fn.tempname() .. "-picker"
-local fifotmp = fn.tempname() .. "-explorer"
-local opts = os.getenv("NNN_OPTS"):gsub("a", "")
-local cfg = {
-	explorercmd = "nnn",
-	pickercmd = "nnn",
-	replace_netrw = false,
-	filetype_exclude = {},
-	default_mode = "explorer",
-	explorer_width = 24,
-	mappings = {},
-	borderstyle = "single",
-	session = nil, -- TODO
-	layout = {} -- TODO also as mapping argument
-}
+local pickersession
+local explorersession
 local M = {}
 
 local function get_buf()
  	for _, buf in pairs(api.nvim_list_bufs()) do
 		local buf_name = api.nvim_buf_get_name(buf)
-		if string.match(buf_name, regex) ~= nil then return buf end
+		if string.match(buf_name, bufmatch) ~= nil then return buf end
 	end
 	return nil
 end
@@ -36,7 +43,7 @@ end
 local function get_win()
  	for _, win in pairs(api.nvim_tabpage_list_wins(api.nvim_tabpage_get_number(0))) do
 		local buf_name = api.nvim_buf_get_name(api.nvim_win_get_buf(win))
-		if string.match(buf_name, regex) ~= nil then return win end
+		if string.match(buf_name, bufmatch) ~= nil then return win end
 	end
   return nil
 end
@@ -44,7 +51,7 @@ end
 local function filter_curwin_nnn()
 	local windows = api.nvim_list_wins()
 	curwin = api.nvim_tabpage_get_win(api.nvim_tabpage_get_number(0))
-	regex = (regex == fiforegex) and pickerregex or fiforegex
+	bufmatch = (bufmatch == "NnnPicker") and "NnnExplorer" or "NnnPicker"
 	if get_win() == curwin then
 		if #windows == 1 then
 			cmd("vsplit")
@@ -52,7 +59,7 @@ local function filter_curwin_nnn()
 			curwin = windows[2]
 		end
 	end
-	regex = (regex == pickerregex) and fiforegex or pickerregex
+	bufmatch = (bufmatch == "NnnExplorer") and "NnnPicker" or "NnnExplorer"
 end
 
 local function close()
@@ -66,7 +73,7 @@ local function close()
 end
 
 local function read_fifo()
-	uv.fs_open(fifotmp, "r+", 438, function(ferr, fd)
+	uv.fs_open(explorertmp, "r+", 438, function(ferr, fd)
 		if ferr then
 			print("Error opening pipe for reading:" .. ferr)
 		else
@@ -78,11 +85,11 @@ local function read_fifo()
 				elseif chunk then
 					defer(function()
 						if type(action) == "function" then
-							action(chunk:sub(1, -2))
+							action({ chunk:sub(1, -2) })
 						elseif #api.nvim_list_wins() == 1 then
 							local win = get_win()
 							local portwidth = api.nvim_win_get_width(win)
-							local width = portwidth - cfg.explorer_width
+							local width = portwidth - cfg.explorer.style.width
 							cmd(width .. "vsplit " .. fn.fnameescape(chunk:sub(1, -2)))
 							curwin = api.nvim_tabpage_get_win(0)
 							api.nvim_set_current_win(win)
@@ -104,48 +111,6 @@ local function read_fifo()
 	end)
 end
 
-local function open_explorer()
-	if get_win() then return end
-	filter_curwin_nnn()
-	local buf = get_buf()
-	if buf == nil then
-		cmd("topleft" .. cfg.explorer_width .. "vsplit term://NNN_OPTS=" .. opts .. " NNN_FIFO=" .. fifotmp .. " " .. cfg.explorercmd .. " -F1")
-		cmd("setlocal nonumber norelativenumber winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
-		api.nvim_buf_set_keymap(get_buf(), "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
-		for i = 1, #cfg.mappings do
-			api.nvim_buf_set_keymap(get_buf(), "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').mapping('" .. i .. "')<CR>", {})
-		end
-		read_fifo()
-	else
-		cmd("topleft" .. cfg.explorer_width .. "vsplit+" .. buf .. "buffer")
-	end
-	cmd("startinsert")
-end
-
-local function create_float()
-  local vim_height = api.nvim_eval("&lines")
-  local vim_width = api.nvim_eval("&columns")
-
-  local width = math.floor(vim_width * 0.8) + 5
-  local height = math.floor(vim_height * 0.7) + 2
-  local col = vim_width * 0.1 - 2
-  local row = vim_height * 0.15 - 1
-  local win = api.nvim_open_win(0, true, {
-			relative = "editor",
-			width = width,
-			height = height,
-			col = col,
-			row = row,
-			style = "minimal",
-			border = cfg.borderstyle
-    })
-	if #api.nvim_list_bufs() == 1 or get_buf() == nil then
-		local buf = api.nvim_create_buf(true, false)
-		cmd("keepalt b" .. buf)
-	end
-	return win
-end
-
 local function on_exit()
 	close()
 	local fd = io.open(pickertmp, "r")
@@ -159,12 +124,56 @@ local function on_exit()
 				table.insert(retlines, line)
 			end
 		end
-		if action ~= nil then defer(function() act(retlines) end,0) end
-	else
-		print("error exiting nnn")
+		if action ~= nil then defer(function() act(retlines) end, 0) end
 	end
 	io.close(fd)
 	action = nil
+end
+
+local function open_explorer()
+	if get_win() then return end
+	filter_curwin_nnn()
+	local buf = get_buf()
+	if buf == nil then
+		cmd("topleft" .. cfg.explorer.width .. "vnew")
+		fn.termopen(cfg.explorer.cmd .. " -p " .. pickertmp .. explorersession .. " -F1", { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit })
+		api.nvim_buf_set_name(0, bufmatch)
+		cmd("setlocal nonumber norelativenumber winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
+		api.nvim_buf_set_keymap(get_buf(), "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
+		for i = 1, #cfg.mappings do
+			api.nvim_buf_set_keymap(get_buf(), "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
+		end
+		read_fifo()
+	else
+		cmd("topleft" .. cfg.explorer.width .. "vsplit+" .. buf .. "buffer")
+	end
+	cmd("startinsert")
+end
+
+local function create_float()
+  local vim_height = api.nvim_eval("&lines")
+  local vim_width = api.nvim_eval("&columns")
+	local height = min(max(0, floor(vim_height * cfg.picker.style.height)), vim_height)
+	local width = min(max(0, floor(vim_width * cfg.picker.style.width)), vim_width)
+  local row = floor(cfg.picker.style.yoffset * (vim_height - height))
+  local col = floor(cfg.picker.style.xoffset * (vim_width - width))
+  row = min(max(0, row), vim_height - height) - 1
+  col = min(max(0, col), vim_width - width)
+
+  local win = api.nvim_open_win(0, true, {
+			relative = "editor",
+			width = width,
+			height = height,
+			col = col,
+			row = row,
+			style = "minimal",
+			border = cfg.picker.style.border
+    })
+	if #api.nvim_list_bufs() == 1 or get_buf() == nil then
+		local buf = api.nvim_create_buf(true, false)
+		cmd("keepalt b" .. buf)
+	end
+	return win
 end
 
 local function open_picker()
@@ -172,11 +181,12 @@ local function open_picker()
 	local win = create_float()
 	local buf = get_buf()
 	if buf == nil then
-		fn.termopen(cfg.pickercmd .. " -p " .. pickertmp, { on_exit = on_exit })
+		fn.termopen(cfg.picker.cmd .. " -p " .. pickertmp .. pickersession, { on_exit = on_exit })
+		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
 		api.nvim_buf_set_keymap(get_buf(), "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
 		for i = 1, #cfg.mappings do
-			api.nvim_buf_set_keymap(get_buf(), "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').mapping('" .. i .. "')<CR>", {})
+			api.nvim_buf_set_keymap(get_buf(), "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
 		end
 	else
 		api.nvim_win_set_buf(win, buf)
@@ -185,16 +195,15 @@ local function open_picker()
 end
 
 function M.toggle(mode)
-	if mode == nil then mode = cfg.default_mode end
 	if mode == "explorer" then
-		regex = fiforegex
+		bufmatch = "NnnExplorer"
 		if get_win() then
 			close()
 		else
 			open_explorer()
   	end
 	elseif mode == "picker" then
-		regex = pickerregex
+		bufmatch = "NnnPicker"
 		if get_win() then
 			close()
 		else
@@ -203,56 +212,84 @@ function M.toggle(mode)
 	end
 end
 
-function M.mapping(map)
+function M.handle_mapping(map)
+	local exit
 	api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n>", true, true, true), "t", true)
 	api.nvim_set_current_win(curwin)
 	local mapping = cfg.mappings[tonumber(map)][2]
 	if type(mapping) == "function" then
 		action = mapping
+	elseif type(mapping) == "table" then
+		action = mapping[1]
+		exit = mapping[2]
 	else
 		cmd(mapping)
 	end
 	if get_win() == nil then open_explorer() end
 	api.nvim_set_current_win(get_win())
-	if regex == fiforegex then
-		api.nvim_feedkeys(api.nvim_replace_termcodes("i<CR>", true, true, true), "t", true)
+	if api.nvim_buf_get_name(0) == "NnnPicker" then
+		api.nvim_feedkeys(api.nvim_replace_termcodes("i" .. (exit and "q" or "<CR>"), true, true, true), "t", true)
 	else
 		api.nvim_feedkeys(api.nvim_replace_termcodes("iq", true, true, true), "t", true)
 	end
 end
 
 function M.setup(setup_cfg)
-	cmd [[
-		command! NnnPicker lua require("nnn").toggle("picker")
-		command! NnnExplorer lua require("nnn").toggle("explorer")
-		command! NnnToggle lua require("nnn").toggle()
-		autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
-		autocmd TermClose * if &ft ==# "nnn" | :bdelete! | endif
-	]]
-
-	if setup_cfg ~= nil then
-		for k, v in pairs(setup_cfg) do
-			if cfg[k] ~= nil then
-				cfg[k] = v
-			end
-		end
+	local function merge(t1, t2)
+	    for k, v in pairs(t2) do
+	        if (type(v) == "table") and (type(t1[k] or false) == "table") then
+	            merge(t1[k], t2[k])
+	        else
+	            t1[k] = v
+	        end
+	    end
+	    return t1
 	end
+	merge(cfg, setup_cfg)
 
   local bufnr = api.nvim_get_current_buf()
   local bufname = api.nvim_buf_get_name(bufnr)
-  local buftype = api.nvim_buf_get_option(bufnr, "filetype")
   local stats = uv.fs_stat(bufname)
   local is_dir = stats and stats.type == "directory"
 	local lines = not is_dir and api.nvim_buf_get_lines(bufnr, 0, -1, false) or {}
   local buf_has_content = #lines > 1 or (#lines == 1 and lines[1] ~= "")
 
-	if (cfg.replace_netrw and is_dir) or (bufname == "" and not buf_has_content)
-		and not vim.tbl_contains(cfg.filetype_exclude, buftype) then
+	if (cfg.replace_netrw ~= nil) and is_dir or (bufname == "" and not buf_has_content) then
 		vim.g.loaded_netrw = 1
 		vim.g.loaded_netrwPlugin = 1
+		vim.g.loaded_netrwSettings = 1
+		vim.g.loaded_netrwFileHandlers = 1
 		api.nvim_buf_delete(0, {})
-		defer(function() M.toggle("picker") end, 0)
+		defer(function() M.toggle(cfg.replace_netrw) end, 0)
 	end
+
+	sessionfile = os.getenv("XDG_CONFIG_HOME")
+	sessionfile = ((sessionfile ~= nil) and sessionfile or (os.getenv("HOME") .. ".config")) .. "/nnn/sessions/nnn.nvim-" .. os.date("%Y-%m-%d_%H-%M-%S")
+	if ((cfg.picker.session or cfg.explorer.session) == "shared") then
+		pickersession = " -S -s " .. sessionfile
+		explorersession = pickersession
+		cmd("augroup NnnSharedSession | autocmd! VimLeavePre * call delete(fnameescape('".. sessionfile .."')) | augroup End")
+	else
+		if cfg.picker.session == "global" then pickersession = " -S "
+		elseif cfg.picker.session == "local" then
+			pickersession = " -S -s " .. sessionfile .. "-picker"
+			cmd("augroup NnnPickerSession | autocmd! VimLeavePre * call delete(fnameescape('".. sessionfile .. "-picker')) | augroup End")
+		else pickersession = "" end
+
+		if cfg.explorer.session == "global" then explorersession = " -S "
+		elseif cfg.explorer.session == "local" then
+			explorersession = " -S -s " .. sessionfile .. "-explorer"
+			cmd("augroup NnnExplorerSession | autocmd! VimLeavePre * call delete(fnameescape('".. sessionfile .. "-explorer')) | augroup End")
+		else explorersession = "" end
+	end
+
+	cmd [[
+		command! NnnPicker lua require("nnn").toggle("picker")
+		command! NnnExplorer lua require("nnn").toggle("explorer")
+		autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
+		autocmd TermClose * if &ft ==# "nnn" | :bdelete! | endif
+	]]
+	M.cfg = cfg
 end
 
 return M
