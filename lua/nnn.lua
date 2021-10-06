@@ -59,6 +59,7 @@ local function filter_curwin_nnn()
 	local windows = api.nvim_list_wins()
 	curwin = api.nvim_tabpage_get_win(api.nvim_tabpage_get_number(0))
 	bufmatch = (bufmatch == "NnnPicker") and "NnnExplorer" or "NnnPicker"
+
 	if get_win() == curwin then
 		if #windows == 1 then
 			cmd("vsplit")
@@ -66,6 +67,7 @@ local function filter_curwin_nnn()
 			curwin = windows[2]
 		end
 	end
+
 	bufmatch = (bufmatch == "NnnExplorer") and "NnnPicker" or "NnnExplorer"
 end
 
@@ -92,15 +94,12 @@ local function read_fifo()
 						if type(action) == "function" then
 							action({ chunk:sub(1, -2) })
 						elseif #api.nvim_list_wins() == 1 then
-							local win = get_win()
-							local portwidth = api.nvim_win_get_width(win)
-							local width = portwidth - cfg.explorer.width
-							cmd("botright " .. width .. "vsplit " .. fn.fnameescape(chunk:sub(1, -2)))
+							cmd("botright vsplit " .. fn.fnameescape(chunk:sub(1, -2)))
 							curwin = api.nvim_tabpage_get_win(0)
-							api.nvim_set_current_win(win)
+							api.nvim_set_current_win(get_win())
 							-- workaround for nnn shifting out of viewport
-							cmd("vertical " .. win .. "resize " .. portwidth)
-							cmd("vertical " .. win .. "resize " .. width)
+							cmd("vertical resize" .. 1)
+							cmd("vertical resize" .. cfg.explorer.width)
 							api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n><C-W>l", true, true, true), "t", true)
 						else
 							api.nvim_set_current_win(curwin)
@@ -145,9 +144,9 @@ local function open_explorer()
 		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
-		api.nvim_buf_set_keymap(get_buf(), "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
+		api.nvim_buf_set_keymap(0, "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
 		for i = 1, #cfg.mappings do
-			api.nvim_buf_set_keymap(get_buf(), "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
+			api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
 		end
 		read_fifo()
 	else
@@ -175,6 +174,7 @@ local function create_float()
 			style = "minimal",
 			border = cfg.picker.style.border
     })
+
 	if #api.nvim_list_bufs() == 1 or get_buf() == nil then
 		local buf = api.nvim_create_buf(true, false)
 		cmd("keepalt buffer" .. buf)
@@ -191,9 +191,9 @@ local function open_picker()
 		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
-		api.nvim_buf_set_keymap(get_buf(), "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
+		api.nvim_buf_set_keymap(0, "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
 		for i = 1, #cfg.mappings do
-			api.nvim_buf_set_keymap(get_buf(), "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
+			api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
 		end
 	else
 		api.nvim_win_set_buf(win, buf)
@@ -220,12 +220,12 @@ function M.toggle(mode)
 end
 
 function M.handle_mapping(map)
-	local quit
-	api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n>", true, true, true), "t", true)
+	local quit = false
 	local mapping = cfg.mappings[tonumber(map)][2]
+
+	api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n>", true, true, true), "t", true)
 	if type(mapping) == "function" then
 		action = mapping
-		quit = false
 	elseif type(mapping) == "table" then
 		action = mapping[1]
 		quit = mapping.quit
@@ -238,11 +238,12 @@ function M.handle_mapping(map)
 			cmd(mapping)
 		end
 	end
+
 	api.nvim_set_current_win(get_win())
 	if api.nvim_buf_get_name(0):match("NnnExplorer") then
-		api.nvim_feedkeys(api.nvim_replace_termcodes("i" .. (quit and "q" or "<CR>"), true, true, true), "t", true)
+		api.nvim_feedkeys(quit and "iq" or api.nvim_replace_termcodes("i<CR>", true, true, true), "t", true)
 	else
-		api.nvim_feedkeys(api.nvim_replace_termcodes("iq", true, true, true), "t", true)
+		api.nvim_feedkeys("iq", "t", true)
 	end
 end
 
