@@ -128,8 +128,8 @@ local function on_exit()
 			end
 		end
 		if action ~= nil then defer(function() act(retlines) end, 0) end
-	end
 	io.close(fd)
+	end
 	action = nil
 end
 
