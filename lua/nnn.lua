@@ -7,20 +7,21 @@ local min = math.min
 local max = math.max
 local floor = math.floor
 -- forward declarations
+local nnnver
 local curwin
 local action
 local bufmatch
 local pickersession
 local explorersession
-local startdir = ""
 local M = {}
 -- initialization
+local startdir = ""
 local pickertmp = fn.tempname() .. "-picker"
 local explorertmp = fn.tempname() .. "-explorer"
 local nnnopts = os.getenv("NNN_OPTS")
-local exploreropts = (nnnopts ~= nil) and nnnopts:gsub("a", "") or ""
+local exploreropts = nnnopts and nnnopts:gsub("a", "") or ""
 local sessionfile = os.getenv("XDG_CONFIG_HOME")
-sessionfile = ((sessionfile ~= nil) and sessionfile or (os.getenv("HOME") .. ".config")) ..
+sessionfile = (sessionfile and sessionfile or (os.getenv("HOME") .. ".config")) ..
 		"/nnn/sessions/nnn.nvim-" .. os.date("%Y-%m-%d_%H-%M-%S")
 
 local cfg = {
@@ -38,28 +39,27 @@ local cfg = {
 	mappings = {},
 }
 
-
+-- Return buffer matching global bufmatch
 local function get_buf()
  	for _, buf in pairs(api.nvim_list_bufs()) do
-		local buf_name = api.nvim_buf_get_name(buf)
-		if buf_name:match(bufmatch) ~= nil then return buf end
+		if api.nvim_buf_get_name(buf):match(bufmatch) then return buf end
 	end
 	return nil
 end
 
+-- Return window containing buffer matching global bufmatch
 local function get_win()
  	for _, win in pairs(api.nvim_tabpage_list_wins(api.nvim_tabpage_get_number(0))) do
-		local buf_name = api.nvim_buf_get_name(api.nvim_win_get_buf(win))
-		if buf_name:match(bufmatch) ~= nil then return win end
+		if api.nvim_buf_get_name(api.nvim_win_get_buf(win)):match(bufmatch) then return win end
 	end
 	return nil
 end
 
+-- Avoid opening in picker buffer from explorer or vice versa
 local function filter_curwin_nnn()
 	local windows = api.nvim_list_wins()
 	curwin = api.nvim_tabpage_get_win(api.nvim_tabpage_get_number(0))
 	bufmatch = (bufmatch == "NnnPicker") and "NnnExplorer" or "NnnPicker"
-
 	if get_win() == curwin then
 		if #windows == 1 then
 			cmd("vsplit")
@@ -67,10 +67,10 @@ local function filter_curwin_nnn()
 			curwin = windows[2]
 		end
 	end
-
 	bufmatch = (bufmatch == "NnnExplorer") and "NnnPicker" or "NnnExplorer"
 end
 
+-- Close nnn window(keeping buffer) and create new buffer one if none left
 local function close()
 	local win = get_win()
 	if not win then return end
@@ -81,6 +81,7 @@ local function close()
 	end
 end
 
+-- Read fifo for explorer asynchronously with vim.loop
 local function read_fifo()
 	uv.fs_open(explorertmp, "r+", 438, function(ferr, fd)
 		if ferr then
@@ -114,20 +115,21 @@ local function read_fifo()
 	end)
 end
 
+-- on_exit callback for picker mode
 local function on_exit()
 	close()
 	local fd, err = io.open(pickertmp, "r")
-	if fd ~= nil then
+	if fd then
 		local retlines = {}
 		local act = action
 		for line in io.lines(pickertmp) do
-			if action == nil then
+			if not action then
 				cmd("edit " .. fn.fnameescape(line))
 			else
 				table.insert(retlines, line)
 			end
 		end
-		if action ~= nil then defer(function() act(retlines) end, 0) end
+		if action then defer(function() act(retlines) end, 0) end
 	io.close(fd)
 	else
 		print("Error opening pickertmp for reading:" .. err)
@@ -135,11 +137,13 @@ local function on_exit()
 	action = nil
 end
 
+-- Open explorer split and set local buffer options and mappings
 local function open_explorer()
 	if get_win() then return end
 	filter_curwin_nnn()
 	local buf = get_buf()
-	if buf == nil then
+	if not buf then
+		api.nvim_create_buf(true, false)
 		cmd("topleft" .. cfg.explorer.width .. "vnew")
 		fn.termopen(cfg.explorer.cmd .. " -F1 -p " .. pickertmp .. explorersession .. startdir, { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit })
 		startdir = ""
@@ -156,6 +160,7 @@ local function open_explorer()
 	cmd("startinsert")
 end
 
+-- Create floating window for NnnPicker
 local function create_float()
 	local vim_height = api.nvim_eval("&lines")
 	local vim_width = api.nvim_eval("&columns")
@@ -176,18 +181,19 @@ local function create_float()
 			border = cfg.picker.style.border
 		})
 
-	if #api.nvim_list_bufs() == 1 or get_buf() == nil then
+	if not get_buf() then
 		local buf = api.nvim_create_buf(true, false)
 		cmd("keepalt buffer" .. buf)
 	end
 	return win
 end
 
+-- Open picker float and set local buffer options and mappings
 local function open_picker()
 	filter_curwin_nnn()
 	local win = create_float()
 	local buf = get_buf()
-	if buf == nil then
+	if not buf then
 		fn.termopen(cfg.picker.cmd .. " -p " .. pickertmp .. pickersession .. " " .. startdir, { on_exit = on_exit })
 		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
@@ -202,12 +208,10 @@ local function open_picker()
 	cmd("startinsert")
 end
 
+-- Toggle explorer/picker windows, keeping buffers
 function M.toggle(mode)
 	if mode == "explorer" then
-		local verfd = io.popen("nnn -V")
-		local ver = verfd:read()
-		io.close(verfd)
-		if tonumber(ver) < 4.3 then print("NnnExplorer requires nnn version >= v4.3") return end
+		if nnnver < 4.3 then print("NnnExplorer requires nnn version >= v4.3") return end
 		bufmatch = "NnnExplorer"
 		if get_win() then
 			close()
@@ -224,6 +228,7 @@ function M.toggle(mode)
 	end
 end
 
+-- Handle user defined mappings
 function M.handle_mapping(map)
 	local quit = false
 	local mapping = cfg.mappings[tonumber(map)][2]
@@ -252,8 +257,9 @@ function M.handle_mapping(map)
 	end
 end
 
+-- Setup function
 function M.setup(setup_cfg)
-	if setup_cfg ~= nil then
+	if setup_cfg then
 		local function merge(t1, t2)
 				for k, v in pairs(t2) do
 						if (type(v) == "table") and (type(t1[k] or false) == "table") then
@@ -267,24 +273,33 @@ function M.setup(setup_cfg)
 		merge(cfg, setup_cfg)
 	end
 
-	local bufnr = api.nvim_get_current_buf()
-	local bufname = api.nvim_buf_get_name(bufnr)
-	local stats = uv.fs_stat(bufname)
-	local is_dir = stats and stats.type == "directory"
-	local lines = not is_dir and api.nvim_buf_get_lines(bufnr, 0, -1, false) or {}
-	local buf_has_content = #lines > 1 or (#lines == 1 and lines[1] ~= "")
+	-- Version check for explorer mode
+	local verfd = io.popen("nnn -V")
+	nnnver = tonumber(verfd:read())
+	io.close(verfd)
 
-	if (cfg.replace_netrw ~= nil) and is_dir or (bufname == "" and not buf_has_content) then
-		vim.g.loaded_netrw = 1
-		vim.g.loaded_netrwPlugin = 1
-		vim.g.loaded_netrwSettings = 1
-		vim.g.loaded_netrwFileHandlers = 1
-		api.nvim_buf_delete(0, {})
-		if is_dir then startdir = bufname end
-		defer(function() M.toggle(cfg.replace_netrw) end, 0)
+	-- Replace netrw plugin if config is set
+	if cfg.replace_netrw == "explorer" or cfg.replace_netrw == "picker" then
+		local bufnr = api.nvim_get_current_buf()
+		local bufname = api.nvim_buf_get_name(bufnr)
+		local stats = uv.fs_stat(bufname)
+		local is_dir = stats and stats.type == "directory"
+		local lines = not is_dir and api.nvim_buf_get_lines(bufnr, 0, -1, false) or {}
+		local buf_has_content = #lines > 1 or (#lines == 1 and lines[1] ~= "")
+
+		if is_dir or (bufname == "" and not buf_has_content) then
+			vim.g.loaded_netrw = 1
+			vim.g.loaded_netrwPlugin = 1
+			vim.g.loaded_netrwSettings = 1
+			vim.g.loaded_netrwFileHandlers = 1
+			api.nvim_buf_delete(0, {})
+			if is_dir then startdir = bufname end
+			defer(function() M.toggle(cfg.replace_netrw) end, 0)
+		end
 	end
 
-	if ((cfg.picker.session or cfg.explorer.session) == "shared") then
+	-- Setup sessionfile name and remove on exit
+	if cfg.picker.session == "shared" or cfg.explorer.session == "shared" then
 		pickersession = " -S -s " .. sessionfile
 		explorersession = pickersession
 		cmd("autocmd VimLeavePre * call delete(fnameescape('".. sessionfile .."'))")
@@ -302,6 +317,7 @@ function M.setup(setup_cfg)
 		else explorersession = "" end
 	end
 
+	-- Register toggle commands, enter insertmode in nnn buffers and delete buffers on quit
 	cmd [[
 		command! NnnPicker lua require("nnn").toggle("picker")
 		command! NnnExplorer lua require("nnn").toggle("explorer")
