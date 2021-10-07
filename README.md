@@ -40,6 +40,15 @@ Moreover, it is possible to [select](https://github.com/jarun/nnn/wiki/concepts#
 Run command `:NnnPicker` to open nnn in a floating window.
 
 In this mode only the `-p` flag is active. Picker mode implies only a single selection will be made before quitting nnn and thus the floating window.
+
+### Bindings
+Bind `NnnExplorer/NnnPicker` to toggle the plugin on/off in normal and terminal mode:
+```vim
+tnoremap <leader>n <cmd>NnnExplorer<CR>
+nnoremap <leader>n <cmd>NnnExplorer<CR>
+tnoremap <leader>p <cmd>NnnPicker<CR>
+nnoremap <leader>p <cmd>NnnPicker<CR>
+```
 ## Configuration
 ### Default options
 ```lua
