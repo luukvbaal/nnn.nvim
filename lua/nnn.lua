@@ -116,7 +116,7 @@ end
 
 local function on_exit()
 	close()
-	local fd = io.open(pickertmp, "r")
+	local fd, err = io.open(pickertmp, "r")
 	if fd ~= nil then
 		local retlines = {}
 		local act = action
@@ -129,6 +129,8 @@ local function on_exit()
 		end
 		if action ~= nil then defer(function() act(retlines) end, 0) end
 	io.close(fd)
+	else
+		print("Error opening pickertmp for reading:" .. err)
 	end
 	action = nil
 end
