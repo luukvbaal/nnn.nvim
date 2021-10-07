@@ -7,6 +7,9 @@ File manager for Neovim powered by [nnn](https://github.com/jarun/nnn).
 
 Requires nnn to be installed, follow the [instructions](https://github.com/jarun/nnn/wiki/Usage#installation).
 
+**NOTE:** Explorer mode requires nnn version v4.3.
+If your distribution does not provide version v4.3 from its repositories, install one of the provided [static binaries](https://github.com/jarun/nnn/releases/tag/v4.3), [OBS packages](https://software.opensuse.org//download.html?project=home%3Astig124%3Annn&package=nnn) or [build from source](https://github.com/jarun/nnn/wiki/Usage#from-source).
+
 Then install the plugin using your plugin manager:
 
 Install with [vim-plug](https://github.com/junegunn/vim-plug):
@@ -87,18 +90,17 @@ local function cd_to_path(files)
 	local read = io.open(dir, "r")
 	if read ~= nil then
 		io.close(read)
-		vim.cmd("execute 'cd " .. dir .. "'")
+		vim.fn.execute("cd " dir)
 		print("working directory changed to: " .. dir)
 	end
 end
 
-mappings = {
-			{ "<C-t>", "tabedit" }, -- open file in tab
-			{ "<C-s>", "split" }, -- open file in split
-			{ "<C-v>", "vsplit" }, -- open file in vertical split
-			{ "<C-w>", cd_to_path }, -- cd to file directory
-			{ "<C-y>", { copy_to_clipboard, quit = false } }, -- copy file to clipboard
-			{ "<S-y>", { copy_to_clipboard, quit = true } } } -- coply files to clipboard
+mappings = { { "<C-t>", "tabedit" }, -- open file in tab
+             { "<C-s>", "split" }, -- open file in split
+             { "<C-v>", "vsplit" }, -- open file in vertical split
+             { "<C-w>", cd_to_path }, -- cd to file directory
+             { "<C-y>", { copy_to_clipboard, quit = false } }, -- copy file to clipboard
+             { "<S-y>", { copy_to_clipboard, quit = true } } } -- coply files to clipboard
 ```
 When mapping a lua function, the mapping can be the function itself, or a table containing the function and a boolean indicating whether <kbd>Enter</kbd> or <kbd>q</kbd> will be pressed to execute the function. This is to facilitate both options in explorer mode.
 

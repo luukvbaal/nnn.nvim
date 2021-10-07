@@ -52,7 +52,7 @@ local function get_win()
 		local buf_name = api.nvim_buf_get_name(api.nvim_win_get_buf(win))
 		if buf_name:match(bufmatch) ~= nil then return win end
 	end
-  return nil
+	return nil
 end
 
 local function filter_curwin_nnn()
@@ -72,12 +72,12 @@ local function filter_curwin_nnn()
 end
 
 local function close()
-  local win = get_win()
-  if not win then return end
+	local win = get_win()
+	if not win then return end
 	if #api.nvim_list_wins() == 1 then
 		api.nvim_win_set_buf(win, api.nvim_create_buf(false, false))
 	else
-  	api.nvim_win_close(win, true)
+		api.nvim_win_close(win, true)
 	end
 end
 
@@ -97,8 +97,7 @@ local function read_fifo()
 							cmd("botright vsplit " .. fn.fnameescape(chunk:sub(1, -2)))
 							curwin = api.nvim_tabpage_get_win(0)
 							api.nvim_set_current_win(get_win())
-							-- workaround for nnn shifting out of viewport
-							cmd("vertical resize" .. 1)
+							cmd("vertical resize" .. 1) -- workaround for nnn shifting out of viewport
 							cmd("vertical resize" .. cfg.explorer.width)
 							api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n><C-W>l", true, true, true), "t", true)
 						else
@@ -140,7 +139,7 @@ local function open_explorer()
 	local buf = get_buf()
 	if buf == nil then
 		cmd("topleft" .. cfg.explorer.width .. "vnew")
-		fn.termopen(cfg.explorer.cmd .. " -p " .. pickertmp .. explorersession .. " -F1 " .. startdir, { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit })
+		fn.termopen(cfg.explorer.cmd .. " -F1 -p " .. pickertmp .. explorersession .. startdir, { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit })
 		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
@@ -156,16 +155,16 @@ local function open_explorer()
 end
 
 local function create_float()
-  local vim_height = api.nvim_eval("&lines")
-  local vim_width = api.nvim_eval("&columns")
+	local vim_height = api.nvim_eval("&lines")
+	local vim_width = api.nvim_eval("&columns")
 	local height = min(max(0, floor(vim_height * cfg.picker.style.height)), vim_height)
 	local width = min(max(0, floor(vim_width * cfg.picker.style.width)), vim_width)
-  local row = floor(cfg.picker.style.yoffset * (vim_height - height))
-  local col = floor(cfg.picker.style.xoffset * (vim_width - width))
-  row = min(max(0, row), vim_height - height) - 1
-  col = min(max(0, col), vim_width - width)
+	local row = floor(cfg.picker.style.yoffset * (vim_height - height))
+	local col = floor(cfg.picker.style.xoffset * (vim_width - width))
+	row = min(max(0, row), vim_height - height) - 1
+	col = min(max(0, col), vim_width - width)
 
-  local win = api.nvim_open_win(0, true, {
+	local win = api.nvim_open_win(0, true, {
 			relative = "editor",
 			width = width,
 			height = height,
@@ -173,7 +172,7 @@ local function create_float()
 			row = row,
 			style = "minimal",
 			border = cfg.picker.style.border
-    })
+		})
 
 	if #api.nvim_list_bufs() == 1 or get_buf() == nil then
 		local buf = api.nvim_create_buf(true, false)
@@ -208,7 +207,7 @@ function M.toggle(mode)
 			close()
 		else
 			open_explorer()
-  	end
+		end
 	elseif mode == "picker" then
 		bufmatch = "NnnPicker"
 		if get_win() then
@@ -250,24 +249,24 @@ end
 function M.setup(setup_cfg)
 	if setup_cfg ~= nil then
 		local function merge(t1, t2)
-		    for k, v in pairs(t2) do
-		        if (type(v) == "table") and (type(t1[k] or false) == "table") then
-		            merge(t1[k], t2[k])
-		        else
-		            t1[k] = v
-		        end
-		    end
-		    return t1
+				for k, v in pairs(t2) do
+						if (type(v) == "table") and (type(t1[k] or false) == "table") then
+								merge(t1[k], t2[k])
+						else
+								t1[k] = v
+						end
+				end
+				return t1
 		end
 		merge(cfg, setup_cfg)
 	end
 
-  local bufnr = api.nvim_get_current_buf()
-  local bufname = api.nvim_buf_get_name(bufnr)
-  local stats = uv.fs_stat(bufname)
-  local is_dir = stats and stats.type == "directory"
+	local bufnr = api.nvim_get_current_buf()
+	local bufname = api.nvim_buf_get_name(bufnr)
+	local stats = uv.fs_stat(bufname)
+	local is_dir = stats and stats.type == "directory"
 	local lines = not is_dir and api.nvim_buf_get_lines(bufnr, 0, -1, false) or {}
-  local buf_has_content = #lines > 1 or (#lines == 1 and lines[1] ~= "")
+	local buf_has_content = #lines > 1 or (#lines == 1 and lines[1] ~= "")
 
 	if (cfg.replace_netrw ~= nil) and is_dir or (bufname == "" and not buf_has_content) then
 		vim.g.loaded_netrw = 1
