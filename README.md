@@ -44,10 +44,10 @@ In this mode only the `-p` flag is active. Picker mode implies only a single sel
 ### Bindings
 Bind `NnnExplorer/NnnPicker` to toggle the plugin on/off in normal and terminal mode:
 ```vim
-tnoremap <leader>n <cmd>NnnExplorer<CR>
-nnoremap <leader>n <cmd>NnnExplorer<CR>
-tnoremap <leader>p <cmd>NnnPicker<CR>
-nnoremap <leader>p <cmd>NnnPicker<CR>
+tnoremap <C-A-n> <cmd>NnnExplorer<CR>
+nnoremap <C-A-n> <cmd>NnnExplorer<CR>
+tnoremap <C-A-p> <cmd>NnnPicker<CR>
+nnoremap <C-A-p> <cmd>NnnPicker<CR>
 ```
 ## Configuration
 ### Default options
