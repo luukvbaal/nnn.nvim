@@ -202,6 +202,10 @@ end
 
 function M.toggle(mode)
 	if mode == "explorer" then
+		local verfd = io.popen("nnn -V")
+		local ver = verfd:read()
+		io.close(verfd)
+		if tonumber(ver) < 4.3 then print("NnnExplorer requires nnn version >= v4.3") return end
 		bufmatch = "NnnExplorer"
 		if get_win() then
 			close()
