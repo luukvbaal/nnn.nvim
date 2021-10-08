@@ -10,6 +10,7 @@ local floor = math.floor
 local nnnver
 local curwin
 local action
+local stdout
 local bufmatch
 local pickersession
 local explorersession
@@ -41,7 +42,7 @@ local cfg = {
 
 -- Return buffer matching global bufmatch
 local function get_buf()
- 	for _, buf in pairs(api.nvim_list_bufs()) do
+	for _, buf in pairs(api.nvim_list_bufs()) do
 		if api.nvim_buf_get_name(buf):match(bufmatch) then return buf end
 	end
 	return nil
@@ -49,7 +50,7 @@ end
 
 -- Return window containing buffer matching global bufmatch
 local function get_win()
- 	for _, win in pairs(api.nvim_tabpage_list_wins(api.nvim_tabpage_get_number(0))) do
+	for _, win in pairs(api.nvim_tabpage_list_wins(api.nvim_tabpage_get_number(0))) do
 		if api.nvim_buf_get_name(api.nvim_win_get_buf(win)):match(bufmatch) then return win end
 	end
 	return nil
@@ -85,7 +86,7 @@ end
 local function read_fifo()
 	uv.fs_open(explorertmp, "r+", 438, function(ferr, fd)
 		if ferr then
-			error("Error opening pipe for reading:" .. ferr .. "\nAre you running nnn with the -a flag?")
+			defer(function()cmd('echo "' .. ferr .. '\\nAre you running nnn with the -a flag?"') end, 0)
 		else
 			local fpipe = uv.new_pipe(false)
 			uv.pipe_open(fpipe, fd)
@@ -116,7 +117,11 @@ local function read_fifo()
 end
 
 -- on_exit callback for picker mode
-local function on_exit()
+local function on_exit(_, code)
+	if code > 0 then
+		defer(function() print(stdout[1]:sub(1, -2)) end, 0)
+		return
+	end
 	close()
 	local fd, err = io.open(pickertmp, "r")
 	if fd then
@@ -132,9 +137,14 @@ local function on_exit()
 		if action then defer(function() act(retlines) end, 0) end
 	io.close(fd)
 	else
-		print("Error opening pickertmp for reading:" .. err)
+		print(err)
 	end
 	action = nil
+end
+
+-- on_stdout callback for error catching
+local function on_stdout(_, data, _)
+	stdout = data
 end
 
 -- Open explorer split and set local buffer options and mappings
@@ -145,7 +155,7 @@ local function open_explorer()
 	if not buf then
 		api.nvim_create_buf(true, false)
 		cmd("topleft" .. cfg.explorer.width .. "vnew")
-		fn.termopen(cfg.explorer.cmd .. " -F1 -p " .. pickertmp .. explorersession .. startdir, { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit })
+		fn.termopen(cfg.explorer.cmd .. " -F1 -p " .. pickertmp .. explorersession .. startdir, { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
 		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
@@ -194,7 +204,7 @@ local function open_picker()
 	local win = create_float()
 	local buf = get_buf()
 	if not buf then
-		fn.termopen(cfg.picker.cmd .. " -p " .. pickertmp .. pickersession .. " " .. startdir, { on_exit = on_exit })
+		fn.termopen(cfg.picker.cmd .. " -p " .. pickertmp .. pickersession .. " " .. startdir, { on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
 		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
