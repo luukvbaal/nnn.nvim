@@ -180,7 +180,6 @@ local function create_float()
 	local col = floor(cfg.picker.style.xoffset * (vim_width - width))
 	row = min(max(0, row), vim_height - height) - 1
 	col = min(max(0, col), vim_width - width)
-
 	local win = api.nvim_open_win(0, true, {
 			relative = "editor",
 			width = width,
@@ -190,7 +189,6 @@ local function create_float()
 			style = "minimal",
 			border = cfg.picker.style.border
 		})
-
 	if not get_buf() then
 		local buf = api.nvim_create_buf(true, false)
 		cmd("keepalt buffer" .. buf)
@@ -204,7 +202,7 @@ local function open_picker()
 	local win = create_float()
 	local buf = get_buf()
 	if not buf then
-		fn.termopen(cfg.picker.cmd .. " -p " .. pickertmp .. pickersession .. " " .. startdir, { on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
+		fn.termopen(cfg.picker.cmd .. " -p " .. pickertmp .. pickersession .. startdir, { on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
 		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
@@ -221,7 +219,7 @@ end
 -- Toggle explorer/picker windows, keeping buffers
 function M.toggle(mode)
 	if mode == "explorer" then
-		if nnnver < 4.3 then print("NnnExplorer requires nnn version >= v4.3") return end
+		if nnnver < 4.3 then print("NnnExplorer requires nnn version >= v4.3. Currently installed: " .. ((nnnver ~= 0) and ("v" .. nnnver) or "none")) return end
 		bufmatch = "NnnExplorer"
 		if get_win() then
 			close()
@@ -242,7 +240,6 @@ end
 function M.handle_mapping(map)
 	local quit = false
 	local mapping = cfg.mappings[tonumber(map)][2]
-
 	api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n>", true, true, true), "t", true)
 	if type(mapping) == "function" then
 		action = mapping
@@ -258,7 +255,6 @@ function M.handle_mapping(map)
 			cmd(mapping)
 		end
 	end
-
 	api.nvim_set_current_win(get_win())
 	if api.nvim_buf_get_name(0):match("NnnExplorer") then
 		api.nvim_feedkeys(quit and "iq" or api.nvim_replace_termcodes("i<CR>", true, true, true), "t", true)
@@ -282,12 +278,10 @@ function M.setup(setup_cfg)
 		end
 		merge(cfg, setup_cfg)
 	end
-
 	-- Version check for explorer mode
 	local verfd = io.popen("nnn -V")
-	nnnver = tonumber(verfd:read())
+	nnnver = tonumber(verfd:read()) or 0
 	io.close(verfd)
-
 	-- Replace netrw plugin if config is set
 	if cfg.replace_netrw == "explorer" or cfg.replace_netrw == "picker" then
 		local bufnr = api.nvim_get_current_buf()
@@ -296,7 +290,6 @@ function M.setup(setup_cfg)
 		local is_dir = stats and stats.type == "directory"
 		local lines = not is_dir and api.nvim_buf_get_lines(bufnr, 0, -1, false) or {}
 		local buf_has_content = #lines > 1 or (#lines == 1 and lines[1] ~= "")
-
 		if is_dir or (bufname == "" and not buf_has_content) then
 			vim.g.loaded_netrw = 1
 			vim.g.loaded_netrwPlugin = 1
@@ -307,7 +300,6 @@ function M.setup(setup_cfg)
 			defer(function() M.toggle(cfg.replace_netrw) end, 0)
 		end
 	end
-
 	-- Setup sessionfile name and remove on exit
 	if cfg.picker.session == "shared" or cfg.explorer.session == "shared" then
 		pickersession = " -S -s " .. sessionfile
@@ -316,17 +308,16 @@ function M.setup(setup_cfg)
 	else
 		if cfg.picker.session == "global" then pickersession = " -S "
 		elseif cfg.picker.session == "local" then
-			pickersession = " -S -s " .. sessionfile .. "-picker"
+			pickersession = " -S -s " .. sessionfile .. "-picker "
 			cmd("autocmd VimLeavePre * call delete(fnameescape('".. sessionfile .. "-picker'))")
 		else pickersession = "" end
 
 		if cfg.explorer.session == "global" then explorersession = " -S "
 		elseif cfg.explorer.session == "local" then
-			explorersession = " -S -s " .. sessionfile .. "-explorer"
+			explorersession = " -S -s " .. sessionfile .. "-explorer "
 			cmd("autocmd VimLeavePre * call delete(fnameescape('".. sessionfile .. "-explorer'))")
 		else explorersession = "" end
 	end
-
 	-- Register toggle commands, enter insertmode in nnn buffers and delete buffers on quit
 	cmd [[
 		command! NnnPicker lua require("nnn").toggle("picker")
