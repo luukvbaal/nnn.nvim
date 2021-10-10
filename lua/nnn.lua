@@ -38,6 +38,7 @@ local cfg = {
 	},
 	replace_netrw = nil,
 	mappings = {},
+	windownav = "<C-w>l",
 }
 
 -- Return buffer matching global bufmatch
@@ -86,7 +87,7 @@ end
 local function read_fifo()
 	uv.fs_open(explorertmp, "r+", 438, function(ferr, fd)
 		if ferr then
-			defer(function()cmd('echo "' .. ferr .. '\\nAre you running nnn with the -a flag?"') end, 0)
+			defer(function() cmd('echo "' .. ferr .. '\\nAre you running nnn with the -a flag?"') end, 0)
 		else
 			local fpipe = uv.new_pipe(false)
 			uv.pipe_open(fpipe, fd)
@@ -159,7 +160,7 @@ local function open_explorer()
 		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
-		api.nvim_buf_set_keymap(0, "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
+		api.nvim_buf_set_keymap(0, "t", cfg.windownav, "<C-\\><C-n><C-w>l", {})
 		for i = 1, #cfg.mappings do
 			api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
 		end
@@ -206,7 +207,7 @@ local function open_picker()
 		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
-		api.nvim_buf_set_keymap(0, "t", "<C-l>", "<C-\\><C-n><C-w>l", {})
+		api.nvim_buf_set_keymap(0, "t", cfg.windownav, "<C-\\><C-n><C-w>l", {})
 		for i = 1, #cfg.mappings do
 			api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
 		end

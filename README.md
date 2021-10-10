@@ -71,6 +71,7 @@ local cfg = {
 	},
 	replace_netrw = nil, -- or explorer/picker
 	mappings = {}, -- table containing mappings, see below
+	windownav = "<C-w>l", -- window movement mapping to navigate out of nnn
 }
 ```
 Edit (part of) this table to your preferences and pass it to the `setup()` function i.e.:
@@ -81,7 +82,8 @@ require("nnn").setup({
 		style = { border = "rounded" },
 		session = "shared",
 	}
-	replace_netrw = "picker"
+	replace_netrw = "picker",
+	window_nav = "<C-l>"
 })
 ```
 
