@@ -296,7 +296,7 @@ function M.setup(setup_cfg)
 			vim.g.loaded_netrwSettings = 1
 			vim.g.loaded_netrwFileHandlers = 1
 			api.nvim_buf_delete(0, {})
-			if is_dir then startdir = bufname end
+			if is_dir then startdir = " " .. bufname .. " " end
 			defer(function() M.toggle(cfg.replace_netrw) end, 0)
 		end
 	end
@@ -310,13 +310,13 @@ function M.setup(setup_cfg)
 		elseif cfg.picker.session == "local" then
 			pickersession = " -S -s " .. sessionfile .. "-picker "
 			cmd("autocmd VimLeavePre * call delete(fnameescape('".. sessionfile .. "-picker'))")
-		else pickersession = "" end
+		else pickersession = " " end
 
 		if cfg.explorer.session == "global" then explorersession = " -S "
 		elseif cfg.explorer.session == "local" then
 			explorersession = " -S -s " .. sessionfile .. "-explorer "
 			cmd("autocmd VimLeavePre * call delete(fnameescape('".. sessionfile .. "-explorer'))")
-		else explorersession = "" end
+		else explorersession = " " end
 	end
 	-- Register toggle commands, enter insertmode in nnn buffers and delete buffers on quit
 	cmd [[
