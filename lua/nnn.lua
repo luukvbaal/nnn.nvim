@@ -12,11 +12,11 @@ local curwin
 local action
 local stdout
 local bufmatch
+local startdir
 local pickersession
 local explorersession
 local M = {}
 -- initialization
-local startdir = ""
 local pickertmp = fn.tempname() .. "-picker"
 local explorertmp = fn.tempname() .. "-explorer"
 local nnnopts = os.getenv("NNN_OPTS")
@@ -157,7 +157,6 @@ local function open_explorer()
 		api.nvim_create_buf(true, false)
 		cmd("topleft" .. cfg.explorer.width .. "vnew")
 		fn.termopen(cfg.explorer.cmd .. " -F1 -p " .. pickertmp .. explorersession .. startdir, { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
-		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
 		api.nvim_buf_set_keymap(0, "t", cfg.windownav, "<C-\\><C-n><C-w>l", {})
@@ -173,8 +172,8 @@ end
 
 -- Create floating window for NnnPicker
 local function create_float()
-	local vim_height = api.nvim_eval("&lines")
-	local vim_width = api.nvim_eval("&columns")
+	local vim_height = api.nvim_get_option("lines")
+	local vim_width = api.nvim_get_option("columns")
 	local height = min(max(0, floor(vim_height * cfg.picker.style.height)), vim_height)
 	local width = min(max(0, floor(vim_width * cfg.picker.style.width)), vim_width)
 	local row = floor(cfg.picker.style.yoffset * (vim_height - height))
@@ -204,7 +203,6 @@ local function open_picker()
 	local buf = get_buf()
 	if not buf then
 		fn.termopen(cfg.picker.cmd .. " -p " .. pickertmp .. pickersession .. startdir, { on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
-		startdir = ""
 		api.nvim_buf_set_name(0, bufmatch)
 		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
 		api.nvim_buf_set_keymap(0, "t", cfg.windownav, "<C-\\><C-n><C-w>l", {})
@@ -218,7 +216,8 @@ local function open_picker()
 end
 
 -- Toggle explorer/picker windows, keeping buffers
-function M.toggle(mode)
+function M.toggle(mode, dir)
+	startdir = dir and " " .. dir .. " " or ""
 	if mode == "explorer" then
 		if nnnver < 4.3 then print("NnnExplorer requires nnn version >= v4.3. Currently installed: " .. ((nnnver ~= 0) and ("v" .. nnnver) or "none")) return end
 		bufmatch = "NnnExplorer"
@@ -297,8 +296,7 @@ function M.setup(setup_cfg)
 			vim.g.loaded_netrwSettings = 1
 			vim.g.loaded_netrwFileHandlers = 1
 			api.nvim_buf_delete(0, {})
-			if is_dir then startdir = " " .. bufname .. " " end
-			schedule(function() M.toggle(cfg.replace_netrw) end)
+			schedule(function() M.toggle(cfg.replace_netrw, is_dir and bufname) end)
 		end
 	end
 	-- Setup sessionfile name and remove on exit
@@ -321,8 +319,8 @@ function M.setup(setup_cfg)
 	end
 	-- Register toggle commands, enter insertmode in nnn buffers and delete buffers on quit
 	cmd [[
-		command! NnnPicker lua require("nnn").toggle("picker")
-		command! NnnExplorer lua require("nnn").toggle("explorer")
+		command! -nargs=? NnnPicker lua require("nnn").toggle("picker", <q-args>)
+		command! -nargs=? NnnExplorer lua require("nnn").toggle("explorer", <q-args>)
 		autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
 		autocmd TermClose * if &ft ==# "nnn" | :bdelete! | endif
 	]]
