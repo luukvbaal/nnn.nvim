@@ -2,7 +2,7 @@ local api = vim.api
 local uv = vim.loop
 local cmd = vim.cmd
 local fn = vim.fn
-local defer = vim.defer_fn
+local schedule = vim.schedule
 local min = math.min
 local max = math.max
 local floor = math.floor
@@ -87,13 +87,13 @@ end
 local function read_fifo()
 	uv.fs_open(explorertmp, "r+", 438, function(ferr, fd)
 		if ferr then
-			defer(function() cmd('echo "' .. ferr .. '\\nAre you running nnn with the -a flag?"') end, 0)
+			schedule(function() cmd('echo "' .. ferr .. '\\nAre you running nnn with the -a flag?"') end)
 		else
 			local fpipe = uv.new_pipe(false)
 			uv.pipe_open(fpipe, fd)
 			uv.read_start(fpipe, function(rerr, chunk)
 				if not rerr and chunk then
-					defer(function()
+					schedule(function()
 						if type(action) == "function" then
 							action({ chunk:sub(1, -2) })
 						elseif #api.nvim_list_wins() == 1 then
@@ -108,7 +108,7 @@ local function read_fifo()
 							cmd("edit " .. fn.fnameescape(chunk:sub(1, -2)))
 						end
 						action = nil
-					end, 0)
+					end)
 				else
 					uv.fs_close(fd)
 				end
@@ -120,7 +120,7 @@ end
 -- on_exit callback for picker mode
 local function on_exit(_, code)
 	if code > 0 then
-		defer(function() print(stdout[1]:sub(1, -2)) end, 0)
+		schedule(function() print(stdout[1]:sub(1, -2)) end)
 		return
 	end
 	close()
@@ -135,7 +135,7 @@ local function on_exit(_, code)
 				table.insert(retlines, line)
 			end
 		end
-		if action then defer(function() act(retlines) end, 0) end
+		if action then schedule(function() act(retlines) end) end
 	io.close(fd)
 	else
 		print(err)
@@ -298,7 +298,7 @@ function M.setup(setup_cfg)
 			vim.g.loaded_netrwFileHandlers = 1
 			api.nvim_buf_delete(0, {})
 			if is_dir then startdir = " " .. bufname .. " " end
-			defer(function() M.toggle(cfg.replace_netrw) end, 0)
+			schedule(function() M.toggle(cfg.replace_netrw) end)
 		end
 	end
 	-- Setup sessionfile name and remove on exit
