@@ -87,7 +87,7 @@ end
 local function read_fifo()
 	uv.fs_open(explorertmp, "r+", 438, function(ferr, fd)
 		if ferr then
-			schedule(function() cmd('echo "' .. ferr .. '\\nAre you running nnn with the -a flag?"') end)
+			schedule(function() print(ferr) end)
 		else
 			local fpipe = uv.new_pipe(false)
 			uv.pipe_open(fpipe, fd)
@@ -163,7 +163,7 @@ local function open_explorer()
 		for i = 1, #cfg.mappings do
 			api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
 		end
-		read_fifo()
+		schedule(function() read_fifo() end)
 	else
 		cmd("topleft" .. cfg.explorer.width .. "vsplit+" .. buf .. "buffer")
 	end
