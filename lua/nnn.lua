@@ -90,8 +90,8 @@ local function read_fifo()
 			schedule(function() print(ferr) end)
 		else
 			local fpipe = uv.new_pipe(false)
-			uv.pipe_open(fpipe, fd)
-			uv.read_start(fpipe, function(rerr, chunk)
+			fpipe:open(fd)
+			fpipe:read_start(function(rerr, chunk)
 				if not rerr and chunk then
 					schedule(function()
 						if type(action) == "function" then
@@ -110,7 +110,7 @@ local function read_fifo()
 						action = nil
 					end)
 				else
-					uv.fs_close(fd)
+					fpipe:close()
 				end
 			end)
 		end
@@ -136,7 +136,6 @@ local function on_exit(_, code)
 			end
 		end
 		if action then schedule(function() act(retlines) end) end
-	io.close(fd)
 	else
 		print(err)
 	end
@@ -281,7 +280,7 @@ function M.setup(setup_cfg)
 	-- Version check for explorer mode
 	local verfd = io.popen("nnn -V")
 	nnnver = tonumber(verfd:read()) or 0
-	io.close(verfd)
+	verfd:close()
 	-- Replace netrw plugin if config is set
 	if cfg.replace_netrw == "explorer" or cfg.replace_netrw == "picker" then
 		local bufnr = api.nvim_get_current_buf()
