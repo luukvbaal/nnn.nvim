@@ -216,7 +216,7 @@ end
 
 -- Toggle explorer/picker windows, keeping buffers
 function M.toggle(mode, dir)
-	startdir = dir and " " .. dir .. " " or ""
+	startdir = dir and " " .. vim.fn.expand(dir) .. " " or ""
 	if mode == "explorer" then
 		if nnnver < 4.3 then print("NnnExplorer requires nnn version >= v4.3. Currently installed: " .. ((nnnver ~= 0) and ("v" .. nnnver) or "none")) return end
 		bufmatch = "NnnExplorer"
