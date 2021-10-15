@@ -120,6 +120,7 @@ local function on_exit(_, code)
 	if fd then
 		local retlines = {}
 		local act = action
+		api.nvim_set_current_win(get_target_win())
 		for line in io.lines(pickertmp) do
 			if not action then
 				cmd("edit " .. fn.fnameescape(line))
@@ -144,7 +145,6 @@ local function open_explorer()
 	if get_win() then return end
 	local buf = get_buf()
 	if not buf then
-		api.nvim_create_buf(true, false)
 		cmd("topleft" .. cfg.explorer.width .. "vnew")
 		fn.termopen(cfg.explorer.cmd .. " -F1 -p " .. pickertmp .. explorersession .. startdir, { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
 		api.nvim_buf_set_name(0, bufmatch)
@@ -206,8 +206,16 @@ local function open_picker()
 end
 
 -- Toggle explorer/picker windows, keeping buffers
-function M.toggle(mode, dir)
-	startdir = dir and " " .. vim.fn.expand(dir) .. " " or ""
+function M.toggle(mode, dir, netrw)
+	local bufname
+	local isdir
+	if netrw then
+		bufname = api.nvim_buf_get_name(api.nvim_get_current_buf())
+		local stats = uv.fs_stat(bufname)
+		isdir = stats and stats.type == "directory"
+		if not isdir then return end
+	end
+	startdir = dir and " " .. vim.fn.expand(dir) .. " " or isdir and bufname .. " " or ""
 	if mode == "explorer" then
 		if nnnver < 4.3 then print("NnnExplorer requires nnn version >= v4.3. Currently installed: " .. ((nnnver ~= 0) and ("v" .. nnnver) or "none")) return end
 		bufmatch = "NnnExplorer"
@@ -261,40 +269,17 @@ end
 
 -- Setup function
 function M.setup(setup_cfg)
-	if setup_cfg then
-		local function merge(t1, t2)
-				for k, v in pairs(t2) do
-						if (type(v) == "table") and (type(t1[k] or false) == "table") then
-								merge(t1[k], t2[k])
-						else
-								t1[k] = v
-						end
-				end
-				return t1
-		end
-		merge(cfg, setup_cfg)
+	if setup_cfg then cfg = vim.tbl_deep_extend("force", cfg, setup_cfg) end
+	-- Replace netrw plugin if config is set
+	if cfg.replace_netrw then
+		cmd("silent! autocmd! FileExplorer *")
+		cmd("autocmd BufEnter,BufNewFile * lua require('nnn').toggle('" .. cfg.replace_netrw .. "', nil, true)")
+		if api.nvim_buf_get_option(0, "filetype") == "netrw" then api.nvim_buf_delete(0, {}) end
 	end
 	-- Version check for explorer mode
 	local verfd = io.popen("nnn -V")
 	nnnver = tonumber(verfd:read()) or 0
 	verfd:close()
-	-- Replace netrw plugin if config is set
-	if cfg.replace_netrw == "explorer" or cfg.replace_netrw == "picker" then
-		local bufnr = api.nvim_get_current_buf()
-		local bufname = api.nvim_buf_get_name(bufnr)
-		local stats = uv.fs_stat(bufname)
-		local is_dir = stats and stats.type == "directory"
-		local lines = not is_dir and api.nvim_buf_get_lines(bufnr, 0, -1, false) or {}
-		local buf_has_content = #lines > 1 or (#lines == 1 and lines[1] ~= "")
-		if is_dir or (bufname == "" and not buf_has_content) then
-			vim.g.loaded_netrw = 1
-			vim.g.loaded_netrwPlugin = 1
-			vim.g.loaded_netrwSettings = 1
-			vim.g.loaded_netrwFileHandlers = 1
-			api.nvim_buf_delete(0, {})
-			schedule(function() M.toggle(cfg.replace_netrw, is_dir and bufname) end)
-		end
-	end
 	-- Setup sessionfile name and remove on exit
 	if cfg.picker.session == "shared" or cfg.explorer.session == "shared" then
 		pickersession = " -S -s " .. sessionfile
