@@ -272,6 +272,13 @@ function M.setup(setup_cfg)
 	if setup_cfg then cfg = vim.tbl_deep_extend("force", cfg, setup_cfg) end
 	-- Replace netrw plugin if config is set
 	if cfg.replace_netrw then
+		if not vim.g.loaded_netrw then
+			vim.g.loaded_netrw = 1
+			vim.g.loaded_netrwPlugin = 1
+			vim.g.loaded_netrwSettings = 1
+			vim.g.loaded_netrwFileHandles = 1
+			schedule(function() M.toggle(cfg.replace_netrw, nil, true) end)
+		end
 		cmd("silent! autocmd! FileExplorer *")
 		cmd("autocmd BufEnter,BufNewFile * lua require('nnn').toggle('" .. cfg.replace_netrw .. "', nil, true)")
 		if api.nvim_buf_get_option(0, "filetype") == "netrw" then api.nvim_buf_delete(0, {}) end
