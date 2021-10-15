@@ -214,6 +214,7 @@ function M.toggle(mode, dir, netrw)
 		local stats = uv.fs_stat(bufname)
 		isdir = stats and stats.type == "directory"
 		if not isdir then return end
+		api.nvim_buf_delete(0, {})
 	end
 	startdir = dir and " " .. vim.fn.expand(dir) .. " " or isdir and " " .. bufname .. " " or ""
 	if mode == "explorer" then
