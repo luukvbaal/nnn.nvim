@@ -8,7 +8,6 @@ local max = math.max
 local floor = math.floor
 -- forward declarations
 local nnnver
-local curwin
 local action
 local stdout
 local bufmatch
@@ -50,26 +49,19 @@ local function get_buf()
 end
 
 -- Return window containing buffer matching global bufmatch
-local function get_win()
+local function get_win(match)
+	match = match ~= nil and match or bufmatch
 	for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
-		if api.nvim_buf_get_name(api.nvim_win_get_buf(win)):match(bufmatch) then return win end
+		if api.nvim_buf_get_name(api.nvim_win_get_buf(win)):match(match) then return win end
 	end
 	return nil
 end
 
--- Avoid opening in picker buffer from explorer or vice versa
-local function filter_curwin_nnn()
-	local windows = api.nvim_list_wins()
-	curwin = api.nvim_tabpage_get_win(0)
-	bufmatch = (bufmatch == "NnnPicker") and "NnnExplorer" or "NnnPicker"
-	if get_win() == curwin then
-		if #windows == 1 then
-			cmd("vsplit")
-		else
-			curwin = windows[2]
-		end
+local function get_target_win()
+	for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
+		local bufname = api.nvim_buf_get_name(api.nvim_win_get_buf(win))
+		if not bufname:find("NnnExplorer") and not bufname:find("NnnPicker") then return win end
 	end
-	bufmatch = (bufmatch == "NnnExplorer") and "NnnPicker" or "NnnExplorer"
 end
 
 -- Close nnn window(keeping buffer) and create new buffer one if none left
@@ -82,6 +74,7 @@ local function close()
 		api.nvim_win_close(win, true)
 	end
 end
+
 
 -- Read fifo for explorer asynchronously with vim.loop
 local function read_fifo()
@@ -98,13 +91,12 @@ local function read_fifo()
 							action({ chunk:sub(1, -2) })
 						elseif #api.nvim_list_wins() == 1 then
 							cmd("botright vsplit " .. fn.fnameescape(chunk:sub(1, -2)))
-							curwin = api.nvim_tabpage_get_win(0)
 							api.nvim_set_current_win(get_win())
 							cmd("vertical resize" .. 1) -- workaround for nnn shifting out of viewport
 							cmd("vertical resize" .. cfg.explorer.width)
 							api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n><C-W>l", true, true, true), "t", true)
 						else
-							api.nvim_set_current_win(curwin)
+							api.nvim_set_current_win(get_target_win())
 							cmd("edit " .. fn.fnameescape(chunk:sub(1, -2)))
 						end
 						action = nil
@@ -150,7 +142,6 @@ end
 -- Open explorer split and set local buffer options and mappings
 local function open_explorer()
 	if get_win() then return end
-	filter_curwin_nnn()
 	local buf = get_buf()
 	if not buf then
 		api.nvim_create_buf(true, false)
@@ -198,7 +189,6 @@ end
 
 -- Open picker float and set local buffer options and mappings
 local function open_picker()
-	filter_curwin_nnn()
 	local win = create_float()
 	local buf = get_buf()
 	if not buf then
@@ -251,7 +241,7 @@ function M.handle_mapping(map)
 			cmd(mapping)
 			open_explorer()
 		else
-			api.nvim_set_current_win(curwin)
+			api.nvim_set_current_win(get_target_win())
 			cmd(mapping)
 		end
 	end
