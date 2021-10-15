@@ -169,25 +169,26 @@ local function open_explorer()
 	cmd("startinsert")
 end
 
--- Create floating window for NnnPicker
-local function create_float()
+-- Calculate window size and return table
+local function get_win_size()
+	local wincfg = { relative = "editor" }
 	local vim_height = api.nvim_get_option("lines")
 	local vim_width = api.nvim_get_option("columns")
-	local height = min(max(0, floor(vim_height * cfg.picker.style.height)), vim_height)
-	local width = min(max(0, floor(vim_width * cfg.picker.style.width)), vim_width)
-	local row = floor(cfg.picker.style.yoffset * (vim_height - height))
-	local col = floor(cfg.picker.style.xoffset * (vim_width - width))
-	row = min(max(0, row), vim_height - height) - 1
-	col = min(max(0, col), vim_width - width)
-	local win = api.nvim_open_win(0, true, {
-			relative = "editor",
-			width = width,
-			height = height,
-			col = col,
-			row = row,
-			style = "minimal",
-			border = cfg.picker.style.border
-		})
+	wincfg.height = min(max(0, floor(vim_height * cfg.picker.style.height)), vim_height)
+	wincfg.width = min(max(0, floor(vim_width * cfg.picker.style.width)), vim_width)
+	local row = floor(cfg.picker.style.yoffset * (vim_height - wincfg.height))
+	local col = floor(cfg.picker.style.xoffset * (vim_width - wincfg.width))
+	wincfg.row = min(max(0, row), vim_height - wincfg.height) - 1
+	wincfg.col = min(max(0, col), vim_width - wincfg.width)
+	return wincfg
+end
+
+-- Create floating window for NnnPicker
+local function create_float()
+	local wincfg = get_win_size()
+	wincfg.style = "minimal"
+	wincfg.border = cfg.picker.style.border
+	local win = api.nvim_open_win(0, true, wincfg)
 	if not get_buf() then
 		local buf = api.nvim_create_buf(true, false)
 		cmd("keepalt buffer" .. buf)
@@ -262,6 +263,12 @@ function M.handle_mapping(map)
 	end
 end
 
+function M.resize()
+	bufmatch = "NnnPicker"
+	local win = get_win()
+	if win then api.nvim_win_set_config(win, get_win_size()) end
+end
+
 -- Setup function
 function M.setup(setup_cfg)
 	if setup_cfg then
@@ -320,6 +327,7 @@ function M.setup(setup_cfg)
 	cmd [[
 		command! -nargs=? NnnPicker lua require("nnn").toggle("picker", <q-args>)
 		command! -nargs=? NnnExplorer lua require("nnn").toggle("explorer", <q-args>)
+		autocmd VimResized * if &ft ==# "nnn" | execute 'lua require("nnn").resize()' | endif
 		autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
 		autocmd TermClose * if &ft ==# "nnn" | :bdelete! | endif
 	]]
