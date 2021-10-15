@@ -51,7 +51,7 @@ end
 
 -- Return window containing buffer matching global bufmatch
 local function get_win()
-	for _, win in pairs(api.nvim_tabpage_list_wins(api.nvim_tabpage_get_number(0))) do
+	for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
 		if api.nvim_buf_get_name(api.nvim_win_get_buf(win)):match(bufmatch) then return win end
 	end
 	return nil
@@ -60,7 +60,7 @@ end
 -- Avoid opening in picker buffer from explorer or vice versa
 local function filter_curwin_nnn()
 	local windows = api.nvim_list_wins()
-	curwin = api.nvim_tabpage_get_win(api.nvim_tabpage_get_number(0))
+	curwin = api.nvim_tabpage_get_win(0)
 	bufmatch = (bufmatch == "NnnPicker") and "NnnExplorer" or "NnnPicker"
 	if get_win() == curwin then
 		if #windows == 1 then
