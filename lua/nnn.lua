@@ -215,7 +215,7 @@ function M.toggle(mode, dir, netrw)
 		isdir = stats and stats.type == "directory"
 		if not isdir then return end
 	end
-	startdir = dir and " " .. vim.fn.expand(dir) .. " " or isdir and bufname .. " " or ""
+	startdir = dir and " " .. vim.fn.expand(dir) .. " " or isdir and " " .. bufname .. " " or ""
 	if mode == "explorer" then
 		if nnnver < 4.3 then print("NnnExplorer requires nnn version >= v4.3. Currently installed: " .. ((nnnver ~= 0) and ("v" .. nnnver) or "none")) return end
 		bufmatch = "NnnExplorer"
