@@ -153,7 +153,7 @@ local function open_explorer()
 		for i = 1, #cfg.mappings do
 			api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
 		end
-		schedule(function() read_fifo() end)
+		read_fifo()
 	else
 		cmd("topleft" .. cfg.explorer.width .. "vsplit+" .. buf .. "buffer")
 	end
@@ -288,6 +288,7 @@ function M.setup(setup_cfg)
 	local verfd = io.popen("nnn -V")
 	nnnver = tonumber(verfd:read()) or 0
 	verfd:close()
+	os.execute("mkfifo " .. explorertmp)
 	-- Setup sessionfile name and remove on exit
 	if cfg.picker.session == "shared" or cfg.explorer.session == "shared" then
 		pickersession = " -S -s " .. sessionfile
