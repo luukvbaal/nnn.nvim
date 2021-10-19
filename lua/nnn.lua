@@ -49,10 +49,9 @@ local function get_buf()
 end
 
 -- Return window containing buffer matching global bufmatch
-local function get_win(match)
-	match = match ~= nil and match or bufmatch
+local function get_win()
 	for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
-		if api.nvim_buf_get_name(api.nvim_win_get_buf(win)):match(match) then return win end
+		if api.nvim_buf_get_name(api.nvim_win_get_buf(win)):match(bufmatch) then return win end
 	end
 	return nil
 end
@@ -74,7 +73,6 @@ local function close()
 		api.nvim_win_close(win, true)
 	end
 end
-
 
 -- Read fifo for explorer asynchronously with vim.loop
 local function read_fifo()
@@ -280,8 +278,8 @@ function M.setup(setup_cfg)
 			vim.g.loaded_netrwFileHandles = 1
 			schedule(function() M.toggle(cfg.replace_netrw, nil, true) end)
 		end
-		cmd("silent! autocmd! FileExplorer *")
-		cmd("autocmd BufEnter,BufNewFile * lua require('nnn').toggle('" .. cfg.replace_netrw .. "', nil, true)")
+		vim.cmd([[silent! autocmd! FileExplorer *
+							autocmd BufEnter,BufNewFile * lua require('nnn').toggle(']] .. cfg.replace_netrw .. [[', nil, true)]])
 		if api.nvim_buf_get_option(0, "filetype") == "netrw" then api.nvim_buf_delete(0, {}) end
 	end
 	-- Version check for explorer mode
