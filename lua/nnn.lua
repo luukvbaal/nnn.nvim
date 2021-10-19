@@ -51,22 +51,28 @@ end
 -- Return window containing buffer matching global bufmatch
 local function get_win()
 	for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
-		if api.nvim_buf_get_name(api.nvim_win_get_buf(win)):match(bufmatch) then return win end
+		local ok, winvar = pcall(api.nvim_win_get_var, win, "nnn")
+		if ok and winvar == bufmatch then return win end
 	end
 	return nil
 end
 
 local function get_target_win()
 	for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
-		local bufname = api.nvim_buf_get_name(api.nvim_win_get_buf(win))
-		if not bufname:find("NnnExplorer") and not bufname:find("NnnPicker") then return win end
+		local ok, _ = pcall(api.nvim_win_get_var, win, "nnn")
+		if not ok then return win end
 	end
 end
 
 -- Close nnn window(keeping buffer) and create new buffer one if none left
 local function close()
 	local win = get_win()
+	local buf = get_buf()
 	if not win then return end
+	if api.nvim_win_get_buf(win) ~= buf then
+		api.nvim_win_set_buf(win, buf)
+		return
+	end
 	if #api.nvim_list_wins() == 1 then
 		api.nvim_win_set_buf(win, api.nvim_create_buf(false, false))
 	else
@@ -113,7 +119,8 @@ local function on_exit(_, code)
 		schedule(function() print(stdout[1]:sub(1, -2)) end)
 		return
 	end
-	close()
+	local win = get_win()
+	if win then api.nvim_win_close(win, true) end
 	local fd, err = io.open(pickertmp, "r")
 	if fd then
 		local retlines = {}
@@ -138,6 +145,15 @@ local function on_stdout(_, data, _)
 	stdout = data
 end
 
+local function buffer_setup()
+	api.nvim_buf_set_name(0, bufmatch)
+	cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
+	api.nvim_buf_set_keymap(0, "t", cfg.windownav, "<C-\\><C-n><C-w>l", {})
+	for i = 1, #cfg.mappings do
+		api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
+	end
+end
+
 -- Open explorer split and set local buffer options and mappings
 local function open_explorer()
 	if get_win() then return end
@@ -145,16 +161,12 @@ local function open_explorer()
 	if not buf then
 		cmd("topleft" .. cfg.explorer.width .. "vnew")
 		fn.termopen(cfg.explorer.cmd .. " -F1 -p " .. pickertmp .. explorersession .. startdir, { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
-		api.nvim_buf_set_name(0, bufmatch)
-		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
-		api.nvim_buf_set_keymap(0, "t", cfg.windownav, "<C-\\><C-n><C-w>l", {})
-		for i = 1, #cfg.mappings do
-			api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
-		end
+		buffer_setup()
 		read_fifo()
 	else
 		cmd("topleft" .. cfg.explorer.width .. "vsplit+" .. buf .. "buffer")
 	end
+	api.nvim_win_set_var(0, "nnn", bufmatch)
 	cmd("startinsert")
 end
 
@@ -191,15 +203,11 @@ local function open_picker()
 	local buf = get_buf()
 	if not buf then
 		fn.termopen(cfg.picker.cmd .. " -p " .. pickertmp .. pickersession .. startdir, { on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
-		api.nvim_buf_set_name(0, bufmatch)
-		cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
-		api.nvim_buf_set_keymap(0, "t", cfg.windownav, "<C-\\><C-n><C-w>l", {})
-		for i = 1, #cfg.mappings do
-			api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
-		end
+		buffer_setup()
 	else
 		api.nvim_win_set_buf(win, buf)
 	end
+	api.nvim_win_set_var(0, "nnn", bufmatch)
 	cmd("startinsert")
 end
 
