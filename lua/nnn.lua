@@ -91,20 +91,26 @@ local function read_fifo()
 			fpipe:read_start(function(rerr, chunk)
 				if not rerr and chunk then
 					schedule(function()
+						local files = {}
+						for file in chunk:gmatch("([^\n]*)\n?") do files[#files + 1] = file end
 						if type(action) == "function" then
-							action({ chunk:sub(1, -2) })
-						elseif #api.nvim_list_wins() == 1 then
-							cmd("botright vsplit " .. fn.fnameescape(chunk:sub(1, -2)))
-							api.nvim_set_current_win(get_win())
-							cmd("vertical resize" .. 1) -- workaround for nnn shifting out of viewport
-							cmd("vertical resize" .. cfg.explorer.width)
-							api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n><C-W>l", true, true, true), "t", true)
+							action(files)
 						else
-							api.nvim_set_current_win(get_target_win())
-							cmd("edit " .. fn.fnameescape(chunk:sub(1, -2)))
+							for i = 1, #files do
+								if #api.nvim_list_wins() == 1 then
+									cmd("botright vsplit " .. fn.fnameescape(files[i]))
+									api.nvim_set_current_win(get_win())
+									cmd("vertical resize" .. 1) -- workaround for nnn shifting out of viewport
+									cmd("vertical resize" .. cfg.explorer.width)
+									api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n><C-W>l", true, true, true), "t", true)
+								else
+									api.nvim_set_current_win(get_target_win())
+									cmd("edit " .. fn.fnameescape(files[i]))
+								end
+							end
 						end
-						action = nil
-					end)
+					action = nil
+				end)
 				else
 					fpipe:close()
 				end
@@ -160,7 +166,7 @@ local function open_explorer()
 	local buf = get_buf()
 	if not buf then
 		cmd("topleft" .. cfg.explorer.width .. "vnew")
-		fn.termopen(cfg.explorer.cmd .. " -F1 -p " .. pickertmp .. explorersession .. startdir, { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
+		fn.termopen(cfg.explorer.cmd .. " -F1 " .. explorersession .. startdir, { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
 		buffer_setup()
 		read_fifo()
 	else
