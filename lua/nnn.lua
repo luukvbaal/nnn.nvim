@@ -13,6 +13,7 @@ local M = {}
 local pickertmp = fn.tempname() .. "-picker"
 local explorertmp = fn.tempname() .. "-explorer"
 local nnnopts = os.getenv("NNN_OPTS")
+local term = os.getenv("TERM")
 local exploreropts = nnnopts and nnnopts:gsub("a", "") or ""
 
 local cfg = {
@@ -164,7 +165,12 @@ local function open_explorer()
 	local buf = get_buf()
 	if not buf then
 		cmd("topleft" .. cfg.explorer.width .. "vnew")
-		fn.termopen(cfg.explorer.cmd .. startdir, { env = { NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }, on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
+		fn.termopen(cfg.explorer.cmd .. startdir, {
+			env = { TERM = term, NNN_OPTS = exploreropts, NNN_FIFO = explorertmp },
+			on_exit = on_exit,
+			on_stdout = on_stdout,
+			stdout_buffered = true
+		})
 		buffer_setup()
 		read_fifo()
 	else
@@ -208,7 +214,12 @@ end
 local function open_picker()
 	local win, buf, new = create_float()
 	if new then
-		fn.termopen(cfg.picker.cmd .. startdir, { on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
+		fn.termopen(cfg.picker.cmd .. startdir, {
+			env = { TERM = term },
+			on_exit = on_exit,
+			on_stdout = on_stdout,
+			stdout_buffered = true
+		})
 		buffer_setup()
 	else
 		api.nvim_win_set_buf(win, buf)
@@ -229,7 +240,10 @@ function M.toggle(mode, dir, netrw)
 	end
 	startdir = dir and " " .. vim.fn.expand(dir) .. " " or isdir and " " .. bufname .. " " or ""
 	if mode == "explorer" then
-		if nnnver < 4.3 then print("NnnExplorer requires nnn version >= v4.3. Currently installed: " .. ((nnnver ~= 0) and ("v" .. nnnver) or "none")) return end
+		if nnnver < 4.3 then
+			print("NnnExplorer requires nnn version >= v4.3. Currently installed: " .. ((nnnver ~= 0) and ("v" .. nnnver) or "none"))
+			return
+		end
 		bufmatch = "NnnExplorer"
 		if get_win() then
 			close()
