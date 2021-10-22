@@ -91,7 +91,6 @@ local function read_fifo()
 								if #api.nvim_list_wins() == 1 then
 									cmd("botright vsplit " .. fn.fnameescape(files[i]))
 									api.nvim_set_current_win(get_win())
-									cmd("vertical resize" .. 1) -- workaround for nnn shifting out of viewport
 									cmd("vertical resize" .. cfg.explorer.width)
 									api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n><C-W>l", true, true, true), "t", true)
 								else
@@ -144,7 +143,7 @@ end
 
 local function buffer_setup()
 	api.nvim_buf_set_name(0, bufmatch)
-	cmd("setlocal nonumber norelativenumber winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
+	cmd("setlocal nonumber norelativenumber wrap winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav, "<C-\\><C-n><C-w>l", {})
 	for i = 1, #cfg.mappings do
 		api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('" .. i .. "')<CR>", {})
