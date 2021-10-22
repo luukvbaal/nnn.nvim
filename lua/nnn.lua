@@ -190,22 +190,24 @@ end
 
 -- Create floating window for NnnPicker
 local function create_float()
+	local new
 	local buf = get_buf()
 	local wincfg = get_win_size()
-	local win = api.nvim_open_win(0, true, wincfg)
 	wincfg.style = "minimal"
 	wincfg.border = cfg.picker.style.border
-	if not buf then
+	local win = api.nvim_open_win(0, true, wincfg)
+	if not get_buf() then
 		buf = api.nvim_create_buf(true, false)
 		cmd("keepalt buffer" .. buf)
+		new = true
 	end
-	return win, buf
+	return win, buf, new
 end
 
 -- Open picker float and set local buffer options and mappings
 local function open_picker()
-	local win, buf = create_float()
-	if not buf then
+	local win, buf, new = create_float()
+	if new then
 		fn.termopen(cfg.picker.cmd .. startdir, { on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
 		buffer_setup()
 	else
