@@ -57,6 +57,7 @@ local cfg = {
 		cmd = "nnn",       -- command overrride (-F1 flag is implied, -a flag is invalid!)
 		width = 24,        -- width of the vertical split
 		session = "",      -- or global/local/shared
+		tabs = true,       -- seperate explorer buffer per tab
 	},
 	picker = {
 		cmd = "nnn",       -- command override (-p flag is implied)

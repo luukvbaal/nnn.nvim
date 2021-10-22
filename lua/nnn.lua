@@ -20,6 +20,7 @@ local cfg = {
 		cmd = "nnn",
 		width = 24,
 		session = "",
+		tabs = true
 	},
 	picker = {
 		cmd = "nnn",
@@ -33,8 +34,10 @@ local cfg = {
 
 -- Return buffer matching global bufmatch
 local function get_buf()
+	local tab = api.nvim_get_current_tabpage()
+	local bufname = (bufmatch == "NnnExplorer") and bufmatch .. (cfg.explorer.tabs and tab or "") or bufmatch
 	for _, buf in pairs(api.nvim_list_bufs()) do
-		if api.nvim_buf_get_name(buf):match(bufmatch) then return buf end
+		if api.nvim_buf_get_name(buf):match(bufname) then return buf end
 	end
 	return nil
 end
@@ -142,7 +145,12 @@ local function on_stdout(_, data, _)
 end
 
 local function buffer_setup()
-	api.nvim_buf_set_name(0, bufmatch)
+	local tabname = (cfg.explorer.tabs and bufmatch == "NnnExplorer")
+	if tabname then
+		api.nvim_buf_set_name(0, bufmatch .. api.nvim_get_current_tabpage())
+	else
+		api.nvim_buf_set_name(0, bufmatch)
+	end
 	cmd("setlocal nonumber norelativenumber wrap winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav, "<C-\\><C-n><C-w>l", {})
 	for i = 1, #cfg.mappings do
@@ -182,21 +190,21 @@ end
 
 -- Create floating window for NnnPicker
 local function create_float()
+	local buf = get_buf()
 	local wincfg = get_win_size()
+	local win = api.nvim_open_win(0, true, wincfg)
 	wincfg.style = "minimal"
 	wincfg.border = cfg.picker.style.border
-	local win = api.nvim_open_win(0, true, wincfg)
-	if not get_buf() then
-		local buf = api.nvim_create_buf(true, false)
+	if not buf then
+		buf = api.nvim_create_buf(true, false)
 		cmd("keepalt buffer" .. buf)
 	end
-	return win
+	return win, buf
 end
 
 -- Open picker float and set local buffer options and mappings
 local function open_picker()
-	local win = create_float()
-	local buf = get_buf()
+	local win, buf = create_float()
 	if not buf then
 		fn.termopen(cfg.picker.cmd .. startdir, { on_exit = on_exit, on_stdout = on_stdout, stdout_buffered = true })
 		buffer_setup()
