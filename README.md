@@ -136,6 +136,8 @@ You can enable persistent sessions in nnn(`-S` flag) by setting picker and explo
 
 Alternatively you can set the session `"shared"` to share the same session between both explorer and picker mode (setting either one to "shared" will make the session shared).
 
+### Colors
+[Three](Three) highlight groups `NnnNormal`, `NnnNormalNC` and `NnnFloatBorder` are available to configure the colors for the active, inactive and picker window borders respectively.
 ## Tips and tricks
 ### Git status
 [Build](https://github.com/jarun/nnn/tree/master/patches#list-of-patches) and install nnn with the [gitstatus](https://github.com/jarun/nnn/blob/master/patches/gitstatus/mainline.diff) patch and add the `-G` flag to your command override to enable git status symbols.

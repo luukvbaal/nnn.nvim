@@ -90,7 +90,7 @@ local function handle_files(iter)
 			local ok, _ = pcall(api.nvim_win_get_var, win, "nnn")
 			if not ok then notnnn = win end
 		end
-		if not empty and notnnn or not targetwin then -- create new win
+		if not empty and not notnnn then -- create new win
 			cmd("botright "..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
 			targetwin = api.nvim_get_current_win()
 		end
@@ -157,11 +157,17 @@ end
 
 local function buffer_setup()
 	api.nvim_buf_set_name(0, bufmatch)
-	cmd("setlocal nonumber norelativenumber wrap winhighlight=Normal: winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
+	cmd("setlocal nonumber norelativenumber wrap winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav, "<C-\\><C-n><C-w>l", {})
 	for i = 1, #cfg.mappings do
 		api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('"..i.."')<CR>", {})
 	end
+end
+
+local function window_setup(float)
+	api.nvim_win_set_var(0, "nnn", bufmatch)
+	api.nvim_win_set_option(0, "winhighlight", "Normal:NnnNormal,NormalNC:NnnNormalNC"..(float and ",FloatBorder:NnnBorder" or ""))
+	cmd("startinsert")
 end
 
 -- Open explorer split and set local buffer options and mappings
@@ -181,8 +187,7 @@ local function open_explorer()
 	else
 		cmd("topleft"..cfg.explorer.width.."vsplit+"..buf.."buffer")
 	end
-	api.nvim_win_set_var(0, "nnn", bufmatch)
-	cmd("startinsert")
+	window_setup()
 end
 
 -- Calculate window size and return table
@@ -229,8 +234,7 @@ local function open_picker()
 	else
 		api.nvim_win_set_buf(win, buf)
 	end
-	api.nvim_win_set_var(0, "nnn", bufmatch)
-	cmd("startinsert")
+	window_setup(true)
 end
 
 -- Toggle explorer/picker windows, keeping buffers
@@ -335,6 +339,9 @@ function M.setup(setup_cfg)
 		autocmd TermClose * if &ft ==# "nnn" | :bdelete! | endif
 		autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
 		autocmd VimResized * if &ft ==# "nnn" | execute 'lua require("nnn").resize()' | endif
+		highlight default link NnnBorder FloatBorder
+		highlight default link NnnNormal Normal
+		highlight default link NnnNormalNC Normal
 	]]
 end
 
