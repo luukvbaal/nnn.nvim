@@ -139,7 +139,10 @@ local function on_exit(id, code)
 		return
 	end
 	local win = get_win()
-	if win then api.nvim_win_close(win, true) end
+	if win then
+		if #api.nvim_tabpage_list_wins(0) == 1 then cmd("split") end
+		api.nvim_win_close(win, true)
+	end
 	if id == pickerid then
 		local fd, err = io.open(pickertmp, "r")
 		if fd then
