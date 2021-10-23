@@ -7,7 +7,7 @@ local min = math.min
 local max = math.max
 local floor = math.floor
 -- forward declarations
-local nnnver, action, stdout, bufmatch, startdir
+local nnnver, action, stdout, bufmatch, startdir, targetwin
 local M = {}
 -- initialization
 local pickertmp = fn.tempname().."-picker"
@@ -50,11 +50,8 @@ local function get_win()
 	return nil
 end
 
-local function get_target_win()
-	for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
-		local ok, _ = pcall(api.nvim_win_get_var, win, "nnn")
-		if not ok then return win end
-	end
+function M.save_win()
+	targetwin = api.nvim_get_current_win()
 end
 
 -- Close nnn window(keeping buffer) and create new buffer one if none left
@@ -96,7 +93,7 @@ local function read_fifo()
 									cmd("vertical resize"..cfg.explorer.width)
 									api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n><C-W>l", true, true, true), "t", true)
 								else
-									api.nvim_set_current_win(get_target_win())
+									api.nvim_set_current_win(targetwin)
 									cmd("edit "..fn.fnameescape(files[i]))
 								end
 							end
@@ -123,7 +120,7 @@ local function on_exit(_, code)
 	if fd then
 		local retlines = {}
 		local act = action
-		api.nvim_set_current_win(get_target_win())
+		api.nvim_set_current_win(targetwin)
 		for line in io.lines(pickertmp) do
 			if not action then
 				cmd("edit "..fn.fnameescape(line))
@@ -266,7 +263,7 @@ function M.handle_mapping(key)
 			cmd(mapping)
 			open_explorer()
 		else
-			api.nvim_set_current_win(get_target_win())
+			api.nvim_set_current_win(targetwin)
 			cmd(mapping)
 		end
 	end
@@ -333,9 +330,10 @@ function M.setup(setup_cfg)
 	cmd [[
 		command! -nargs=? NnnPicker lua require("nnn").toggle("picker", <q-args>)
 		command! -nargs=? NnnExplorer lua require("nnn").toggle("explorer", <q-args>)
-		autocmd VimResized * if &ft ==# "nnn" | execute 'lua require("nnn").resize()' | endif
-		autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
 		autocmd TermClose * if &ft ==# "nnn" | :bdelete! | endif
+		autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
+		autocmd WinLeave * if &ft !=# "nnn" | execute 'lua require("nnn").save_win()' | endif
+		autocmd VimResized * if &ft ==# "nnn" | execute 'lua require("nnn").resize()' | endif
 	]]
 end
 
