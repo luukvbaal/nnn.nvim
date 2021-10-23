@@ -7,13 +7,14 @@ local min = math.min
 local max = math.max
 local floor = math.floor
 -- forward declarations
-local nnnver, action, stdout, bufmatch, startdir, targetwin
+local nnnver, action, stdout, bufmatch, startdir, pickerid
 local M = {}
 -- initialization
 local pickertmp = fn.tempname().."-picker"
 local explorertmp = fn.tempname().."-explorer"
 local nnnopts = os.getenv("NNN_OPTS")
 local term = os.getenv("TERM")
+local targetwin = api.nvim_get_current_win()
 local exploreropts = nnnopts and nnnopts:gsub("a", "") or ""
 
 local cfg = {
@@ -50,8 +51,15 @@ local function get_win()
 	return nil
 end
 
+-- Save target window on WinEnter filtering out nnn windows
 function M.save_win()
-	targetwin = api.nvim_get_current_win()
+	schedule(function()
+		if api.nvim_buf_get_option(api.nvim_win_get_buf(0), "filetype") ~= "nnn" then
+			targetwin = api.nvim_get_current_win()
+		elseif #api.nvim_tabpage_list_wins(0) == 1 then
+			targetwin = nil
+		end
+	end)
 end
 
 -- Close nnn window(keeping buffer) and create new buffer one if none left
@@ -63,10 +71,43 @@ local function close()
 		api.nvim_win_set_buf(win, buf)
 		return
 	end
-	if #api.nvim_list_wins() == 1 then
+	if #api.nvim_tabpage_list_wins(0) == 1 then
 		api.nvim_win_set_buf(win, api.nvim_create_buf(false, false))
 	else
 		api.nvim_win_close(win, true)
+	end
+end
+
+local function handle_files(iter)
+	local files = {}
+	local empty, notnnn
+	if not targetwin then -- find window containing empty or non-nnn buffer
+		for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
+			if api.nvim_buf_get_name(api.nvim_win_get_buf(win)) == "" then
+				empty = win
+				break
+			end
+			local ok, _ = pcall(api.nvim_win_get_var, win, "nnn")
+			if not ok then notnnn = win end
+		end
+		if not empty and notnnn or not targetwin then -- create new win
+			cmd("botright "..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
+			targetwin = api.nvim_get_current_win()
+		end
+	end
+	api.nvim_set_current_win(targetwin or empty or notnnn)
+	for file in iter do
+		if action then
+			files[#files + 1] = file
+		else
+			cmd("edit "..fn.fnameescape(file))
+		end
+	end
+	if action then
+		schedule(function()
+			action(files)
+			action = nil
+		end)
 	end
 end
 
@@ -81,25 +122,8 @@ local function read_fifo()
 			fpipe:read_start(function(rerr, chunk)
 				if not rerr and chunk then
 					schedule(function()
-						local files = {}
-						for file in chunk:gmatch("([^\n]*)\n?") do files[#files + 1] = file end
-						if type(action) == "function" then
-							action(files)
-						else
-							for i = 1, #files do
-								if #api.nvim_list_wins() == 1 then
-									cmd("botright vsplit "..fn.fnameescape(files[i]))
-									api.nvim_set_current_win(get_win())
-									cmd("vertical resize"..cfg.explorer.width)
-									api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n><C-W>l", true, true, true), "t", true)
-								else
-									api.nvim_set_current_win(targetwin)
-									cmd("edit "..fn.fnameescape(files[i]))
-								end
-							end
-						end
-					action = nil
-				end)
+						handle_files(chunk:gmatch("[^\n]+"))
+					end)
 				else
 					fpipe:close()
 				end
@@ -109,30 +133,21 @@ local function read_fifo()
 end
 
 -- on_exit callback for picker mode
-local function on_exit(_, code)
+local function on_exit(id, code)
 	if code > 0 then
 		schedule(function() print(stdout[1]:sub(1, -2)) end)
 		return
 	end
 	local win = get_win()
 	if win then api.nvim_win_close(win, true) end
-	local fd, err = io.open(pickertmp, "r")
-	if fd then
-		local retlines = {}
-		local act = action
-		api.nvim_set_current_win(targetwin)
-		for line in io.lines(pickertmp) do
-			if not action then
-				cmd("edit "..fn.fnameescape(line))
-			else
-				table.insert(retlines, line)
-			end
+	if id == pickerid then
+		local fd, err = io.open(pickertmp, "r")
+		if fd then
+			handle_files(io.lines(pickertmp))
+		else
+			print(err)
 		end
-		if action then schedule(function() act(retlines) end) end
-	else
-		print(err)
 	end
-	action = nil
 end
 
 -- on_stdout callback for error catching
@@ -204,7 +219,7 @@ end
 local function open_picker()
 	local win, buf, new = create_float()
 	if new then
-		fn.termopen(cfg.picker.cmd..startdir, {
+		pickerid = fn.termopen(cfg.picker.cmd..startdir, {
 			env = { TERM = term },
 			on_exit = on_exit,
 			on_stdout = on_stdout,
@@ -253,21 +268,7 @@ end
 
 -- Handle user defined mappings
 function M.handle_mapping(key)
-	local mapping = cfg.mappings[tonumber(key)][2]
-	print(vim.inspect(cfg.mappings), key)
-	api.nvim_feedkeys(api.nvim_replace_termcodes("<C-\\><C-n>", true, true, true), "t", true)
-	if type(mapping) == "function" then
-		action = mapping
-	else
-		if mapping:match("tab") then
-			cmd(mapping)
-			open_explorer()
-		else
-			api.nvim_set_current_win(targetwin)
-			cmd(mapping)
-		end
-	end
-	api.nvim_set_current_win(get_win())
+	action = cfg.mappings[tonumber(key)][2]
 	if api.nvim_buf_get_name(0):match("NnnExplorer") then
 		api.nvim_feedkeys(api.nvim_replace_termcodes("i<CR>", true, true, true), "t", true)
 	else
@@ -330,9 +331,9 @@ function M.setup(setup_cfg)
 	cmd [[
 		command! -nargs=? NnnPicker lua require("nnn").toggle("picker", <q-args>)
 		command! -nargs=? NnnExplorer lua require("nnn").toggle("explorer", <q-args>)
+		autocmd WinEnter * :lua require("nnn").save_win()
 		autocmd TermClose * if &ft ==# "nnn" | :bdelete! | endif
 		autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
-		autocmd WinLeave * if &ft !=# "nnn" | execute 'lua require("nnn").save_win()' | endif
 		autocmd VimResized * if &ft ==# "nnn" | execute 'lua require("nnn").resize()' | endif
 	]]
 end
