@@ -129,3 +129,20 @@ Alternatively you can set the session `"shared"` to share the same session betwe
 ### preview-tui
 Setting the command override for picker mode to for example `tmux new-session nnn -P<plugin-key>` will open `tmux` inside the picker window and can be used to open [`preview-tui`](https://github.com/jarun/nnn/blob/master/plugins/preview-tui) inside the floating window:
 ![img](https://i.imgur.com/OhfK12S.gif)
+
+## Troubleshooting
+
+These are some common problems that one might run into. Follow the instruction
+and add relevant code snippet into your `init.vim` to fix them.
+
+* Files being renamed randomly: This can happen when using `AutoComplPop`
+plugin.
+
+```vim
+function! AutoCmpNNN()
+	call acp#disable()
+	autocmd BufLeave <buffer> call acp#enable()
+	autocmd BufEnter <buffer> call acp#disable()
+endfunction
+autocmd FileType nnn call AutoCmpNNN()
+```
