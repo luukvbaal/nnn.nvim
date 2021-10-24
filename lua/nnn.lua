@@ -21,6 +21,7 @@ local cfg = {
 	explorer = {
 		cmd = "nnn",
 		width = 24,
+		location = "topleft",
 		session = "",
 		tabs = true
 	},
@@ -31,7 +32,7 @@ local cfg = {
 	},
 	replace_netrw = nil,
 	mappings = {},
-	windownav = "<C-w>l",
+	windownav = { left = "<C-w>h", right = "<C-w>l" },
 }
 
 -- Return buffer matching global bufmatch<tab>
@@ -91,7 +92,7 @@ local function handle_files(iter)
 			if not ok then notnnn = win end
 		end
 		if not empty and not notnnn then -- create new win
-			cmd("botright "..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
+			cmd(cfg.explorer.location.." "..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
 			targetwin = api.nvim_get_current_win()
 		end
 	end
@@ -161,7 +162,8 @@ end
 local function buffer_setup()
 	api.nvim_buf_set_name(0, bufmatch)
 	cmd("setlocal nonumber norelativenumber wrap winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
-	api.nvim_buf_set_keymap(0, "t", cfg.windownav, "<C-\\><C-n><C-w>l", {})
+	api.nvim_buf_set_keymap(0, "t", cfg.windownav.left, "<C-\\><C-n><C-w>h", {})
+	api.nvim_buf_set_keymap(0, "t", cfg.windownav.right, "<C-\\><C-n><C-w>l", {})
 	for i = 1, #cfg.mappings do
 		api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('"..i.."')<CR>", {})
 	end
@@ -178,7 +180,7 @@ local function open_explorer()
 	if get_win() then return end
 	local buf = get_buf()
 	if not buf then
-		cmd("topleft"..cfg.explorer.width.."vnew")
+		cmd(cfg.explorer.location.." "..cfg.explorer.width.."vnew")
 		fn.termopen(cfg.explorer.cmd..startdir, {
 			env = { TERM = term, NNN_OPTS = exploreropts, NNN_FIFO = explorertmp },
 			on_exit = on_exit,
@@ -188,7 +190,7 @@ local function open_explorer()
 		buffer_setup()
 		read_fifo()
 	else
-		cmd("topleft"..cfg.explorer.width.."vsplit+"..buf.."buffer")
+		cmd(cfg.explorer.location.." "..cfg.explorer.width.."vsplit+"..buf.."buffer")
 	end
 	window_setup()
 end

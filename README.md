@@ -56,6 +56,7 @@ local cfg = {
 	explorer = {
 		cmd = "nnn",       -- command overrride (-F1 flag is implied, -a flag is invalid!)
 		width = 24,        -- width of the vertical split
+		side = "topleft",  -- or botright, location of the explorer window
 		session = "",      -- or global/local/shared
 		tabs = true,       -- seperate explorer buffer per tab
 	},
@@ -72,7 +73,10 @@ local cfg = {
 	},
 	replace_netrw = nil, -- or explorer/picker
 	mappings = {},       -- table containing mappings, see below
-	windownav = "<C-w>l" -- window movement mapping to navigate out of nnn
+	windownav = {        -- window movement mappings to navigate out of nnn
+		left = "<C-w>h",
+		right = "<C-w>l"
+	},
 }
 ```
 Edit (part of) this table to your preferences and pass it to the `setup()` function i.e.:
