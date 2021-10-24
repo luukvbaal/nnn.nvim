@@ -21,7 +21,7 @@ local cfg = {
 	explorer = {
 		cmd = "nnn",
 		width = 24,
-		location = "topleft",
+		side = "topleft",
 		session = "",
 		tabs = true
 	},
@@ -92,7 +92,7 @@ local function handle_files(iter)
 			if not ok then notnnn = win end
 		end
 		if not empty and not notnnn then -- create new win
-			cmd(cfg.explorer.location.." "..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
+			cmd(cfg.explorer.side.." "..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
 			targetwin = api.nvim_get_current_win()
 		end
 	end
@@ -180,7 +180,7 @@ local function open_explorer()
 	if get_win() then return end
 	local buf = get_buf()
 	if not buf then
-		cmd(cfg.explorer.location.." "..cfg.explorer.width.."vnew")
+		cmd(cfg.explorer.side.." "..cfg.explorer.width.."vnew")
 		fn.termopen(cfg.explorer.cmd..startdir, {
 			env = { TERM = term, NNN_OPTS = exploreropts, NNN_FIFO = explorertmp },
 			on_exit = on_exit,
@@ -190,7 +190,7 @@ local function open_explorer()
 		buffer_setup()
 		read_fifo()
 	else
-		cmd(cfg.explorer.location.." "..cfg.explorer.width.."vsplit+"..buf.."buffer")
+		cmd(cfg.explorer.side.." "..cfg.explorer.width.."vsplit+"..buf.."buffer")
 	end
 	window_setup()
 end
