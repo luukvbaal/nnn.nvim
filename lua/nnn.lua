@@ -7,8 +7,9 @@ local min = math.min
 local max = math.max
 local floor = math.floor
 -- forward declarations
-local nnnver, action, stdout, bufmatch, startdir, pickerid
+local nnnver, action, stdout, bufmatch, startdir, pickerid, oppside
 local M = {}
+M.builtin = {}
 -- initialization
 local pickertmp = fn.tempname().."-picker"
 local explorertmp = fn.tempname().."-explorer"
@@ -92,7 +93,7 @@ local function handle_files(iter)
 			if not ok then notnnn = win end
 		end
 		if not empty and not notnnn then -- create new win
-			cmd(cfg.explorer.side.." "..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
+			cmd(oppside.." "..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
 			targetwin = api.nvim_get_current_win()
 		end
 	end
@@ -291,9 +292,54 @@ function M.resize()
 	if win then api.nvim_win_set_config(win, get_win_size()) end
 end
 
+-- Builtin mapping functions
+local function open_in(files, command)
+	for i = 1, #files do
+		vim.cmd(command.." "..vim.fn.fnameescape(files[i]))
+	end
+end
+
+function M.builtin.open_in_split(files) open_in(files, "split") end
+function M.builtin.open_in_vsplit(files) open_in(files, "vsplit") end
+function M.builtin.open_in_tab(files)
+	vim.cmd("tabnew")
+	open_in(files, "edit")
+	M.toggle("explorer")
+	vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n><C-w>h", true, true, true), "t", true)
+end
+
+function M.builtin.open_in_preview(files)
+	local previewbuf = api.nvim_get_current_buf()
+	local previewname = api.nvim_buf_get_name(previewbuf)
+	local file = fn.fnameescape(files[1])
+	if previewname == file then return end
+	cmd("edit "..fn.fnameescape(files[1]))
+	if previewname ~= "" and not previewname:match(bufmatch) then
+		api.nvim_buf_delete(previewbuf, {})
+	end
+	api.nvim_set_current_win(get_win())
+end
+
+function M.builtin.copy_to_clipboard(files)
+	files = table.concat(files, "\n")
+	vim.fn.setreg("+", files)
+	vim.defer_fn(function() print(files:gsub("\n", ", ").." copied to register") end, 0)
+end
+
+function M.builtin.cd_to_path(files)
+	local dir = files[1]:match(".*/")
+	local read = io.open(dir, "r")
+	if read ~= nil then
+		io.close(read)
+		vim.fn.execute("cd "..dir)
+		vim.defer_fn(function() print("working directory changed to: "..dir) end, 0)
+	end
+end
+
 -- Setup function
 function M.setup(setup_cfg)
 	if setup_cfg then cfg = vim.tbl_deep_extend("force", cfg, setup_cfg) end
+	oppside = cfg.explorer.side:match("to") and "botright" or "topleft"
 	-- Replace netrw plugin if config is set
 	if cfg.replace_netrw then
 		if not vim.g.loaded_netrw then

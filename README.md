@@ -94,45 +94,20 @@ require("nnn").setup({
 
 ### Mappings
 It's possible to map custom lua functions to keys which are passed the selected file or active nnn selection.
+A set of builtin functions is provided which can be used as follows:
 ```lua
-	local function open_in(files, command)
-		for i = 1, #files do
-			vim.cmd(command.." "..vim.fn.fnameescape(files[i]))
-		end
-	end
-	local function open_in_split(files) open_in(files, "split") end
-	local function open_in_vsplit(files) open_in(files, "vsplit") end
-	local function open_in_tab(files)
-		vim.cmd("tabnew")
-		open_in(files, "edit")
-		require("nnn").toggle("explorer")
-		vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n><C-w>l", true, true, true), "t", true)
-	end
-	local function deferprint(msg)
-		vim.defer_fn(function() print(msg) end, 0)
-	end
-	local function copy_to_clipboard(files)
-		files = table.concat(files, "\n")
-		vim.fn.setreg("+", files)
-		deferprint(files:gsub("\n", ", ").." copied to register")
-	end
-	local function cd_to_path(files)
-		local dir = files[1]:match(".*/")
-		local read = io.open(dir, "r")
-		if read ~= nil then
-			io.close(read)
-			vim.fn.execute("cd "..dir)
-			deferprint("working directory changed to: "..dir)
-		end
-	end
+	local builtin = require("nnn").builtin	
 	mappings = {
-		{ "<C-t>", open_in_tab },       -- open file(s) in tab
-		{ "<C-s>", open_in_split },     -- open file(s) in split
-		{ "<C-v>", open_in_vsplit },    -- open file(s) in vertical split
-		{ "<C-y>", copy_to_clipboard }, -- copy file(s) to clipboard
-		{ "<C-w>", cd_to_path },        -- cd to file directory
+		{ "<C-t>", builtin.open_in_tab },       -- open file(s) in tab
+		{ "<C-s>", builtin.open_in_split },     -- open file(s) in split
+		{ "<C-v>", builtin.open_in_vsplit },    -- open file(s) in vertical split
+		{ "<C-p>", builtin.open_in_preview },   -- open file in preview split keeping nnn focused
+		{ "<C-y>", builtin.copy_to_clipboard }, -- copy file(s) to clipboard
+		{ "<C-w>", builtin.cd_to_path },        -- cd to file directory
 	}
 ```
+To create your own function mapping follow the function signature of the builtin functions which are passed a table of file names.
+
 Note that in both picker and explorer mode, the mapping will execute on the nnn selection if it exists.
 
 ### Session
