@@ -35,6 +35,7 @@ local cfg = {
 	auto_open = {
 		setup = nil,
 		tabpage = nil,
+		empty = false,
 		ft_ignore = { "gitcommit" }
 	},
 	auto_close = false,
@@ -277,16 +278,19 @@ end
 
 -- Toggle explorer/picker windows, keeping buffers
 function M.toggle(mode, dir, auto)
-	if (auto == "setup" or auto == "tab") and
-		vim.tbl_contains(cfg.auto_open.ft_ignore, api.nvim_buf_get_option(0, "filetype")) then
-			return
-	end
 	local bufname = api.nvim_buf_get_name(0)
+	local is_dir = isdir(bufname)
 	if auto == "netrw" then
-		if not isdir(bufname) then return end
+		if not is_dir then return end
 		api.nvim_buf_delete(0, {})
+	elseif (auto == "setup" or auto == "tab") then
+		if (cfg.auto_open.empty and (bufname ~= "" and not is_dir) or
+		vim.tbl_contains(cfg.auto_open.ft_ignore, api.nvim_buf_get_option(0, "filetype"))) then
+			return
+		end
+		if isdir(bufname) then api.nvim_buf_delete(0, {}) end
 	end
-	startdir = dir and " "..vim.fn.expand(dir).." " or isdir and " "..bufname.." " or ""
+	startdir = dir and " "..vim.fn.expand(dir).." " or is_dir and " "..bufname.." " or ""
 	if mode == "explorer" then
 		if nnnver < 4.3 then
 			print("NnnExplorer requires nnn version >= v4.3. Currently installed: "..
@@ -414,15 +418,10 @@ function M.setup(setup_cfg)
 	end
 	cfg.picker.cmd = cfg.picker.cmd.." -p "..pickertmp..pickersession
 	cfg.explorer.cmd = cfg.explorer.cmd.." -F1 "..explorersession
-	if cfg.auto_open.setup then
-		if isdir(api.nvim_buf_get_name(0)) then api.nvim_buf_delete(0, {}) end
-		M.toggle(cfg.auto_open.setup, nil, "setup")
-	end
+	if cfg.auto_open.setup then M.toggle(cfg.auto_open.setup, nil, "setup") end
+	if cfg.auto_close then cmd("autocmd WinClosed * lua require('nnn').on_close()") end
 	if cfg.auto_open.tabpage then
 		cmd("autocmd TabNewEntered * lua vim.schedule(function()require('nnn').toggle('"..cfg.auto_open.tabpage.."',nil,'tab')end)")
-	end
-	if cfg.auto_close then
-		cmd("autocmd WinClosed * lua require('nnn').on_close()")
 	end
 	cmd [[
 		command! -nargs=? NnnPicker lua require("nnn").toggle("picker", <q-args>)

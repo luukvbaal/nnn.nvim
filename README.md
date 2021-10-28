@@ -74,6 +74,7 @@ local cfg = {
 	auto_open = {
 		setup = nil,       -- or explorer/picker, auto open on setup function
 		tabpage = nil,     -- or explorer/picker, auto open when opening new tabpage
+		empty = false,     -- only auto open on empty buffer
 		ft_ignore = {      -- dont auto open for these filetypes
 			"gitcommit",
 		}
