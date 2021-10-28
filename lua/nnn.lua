@@ -418,7 +418,7 @@ function M.setup(setup_cfg)
 	end
 	cfg.picker.cmd = cfg.picker.cmd.." -p "..pickertmp..pickersession
 	cfg.explorer.cmd = cfg.explorer.cmd.." -F1 "..explorersession
-	if cfg.auto_open.setup then M.toggle(cfg.auto_open.setup, nil, "setup") end
+	if cfg.auto_open.setup then schedule(function() M.toggle(cfg.auto_open.setup, nil, "setup")end) end
 	if cfg.auto_close then cmd("autocmd WinClosed * lua require('nnn').on_close()") end
 	if cfg.auto_open.tabpage then
 		cmd("autocmd TabNewEntered * lua vim.schedule(function()require('nnn').toggle('"..cfg.auto_open.tabpage.."',nil,'tab')end)")
