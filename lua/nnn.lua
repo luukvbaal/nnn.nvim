@@ -53,6 +53,7 @@ end
 
 -- Return window containing buffer matching global bufmatch
 local function get_win()
+	if not bufmatch then return nil end
 	for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
 		local winvar = npcall(api.nvim_win_get_var, win, "nnn")
 		if winvar == bufmatch then return win end
@@ -296,7 +297,6 @@ function M.toggle(mode, dir, auto)
 		if get_win() then
 			close()
 		else
-			if auto == "" and npcall(api.nvim_win_get_var, 0, "nnn") then return end
 			open_explorer()
 		end
 	elseif mode == "picker" then
