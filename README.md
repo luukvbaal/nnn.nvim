@@ -58,7 +58,7 @@ local cfg = {
 		width = 24,        -- width of the vertical split
 		side = "topleft",  -- or botright, location of the explorer window
 		session = "",      -- or global/local/shared
-		tabs = true,       -- seperate explorer buffer per tab
+		tabs = true,       -- seperate nnn instance per tab
 	},
 	picker = {
 		cmd = "nnn",       -- command override (-p flag is implied)
@@ -71,6 +71,14 @@ local cfg = {
 		},
 		session = "",      -- or global/local/shared
 	},
+	auto_open = {
+		setup = nil,       -- or explorer/picker, auto open on setup function
+		tabpage = nil,     -- or explorer/picker, auto open when opening new tabpage
+		ft_ignore = {      -- dont auto open for these filetypes
+			"gitcommit",
+		}
+	},
+	auto_close = false,  -- close tabpage/nvim when nnn is last window
 	replace_netrw = nil, -- or explorer/picker
 	mappings = {},       -- table containing mappings, see below
 	windownav = {        -- window movement mappings to navigate out of nnn

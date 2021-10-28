@@ -2,6 +2,7 @@ local api = vim.api
 local uv = vim.loop
 local cmd = vim.cmd
 local fn = vim.fn
+local npcall = vim.F.npcall
 local schedule = vim.schedule
 local min = math.min
 local max = math.max
@@ -31,6 +32,12 @@ local cfg = {
 		style = { width = 0.9, height = 0.8, xoffset = 0.5, yoffset = 0.5, border = "single" },
 		session = "",
 	},
+	auto_open = {
+		setup = nil,
+		tabpage = nil,
+		ft_ignore = { "gitcommit" }
+	},
+	auto_close = false,
 	replace_netrw = nil,
 	mappings = {},
 	windownav = { left = "<C-w>h", right = "<C-w>l" },
@@ -47,8 +54,8 @@ end
 -- Return window containing buffer matching global bufmatch
 local function get_win()
 	for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
-		local ok, winvar = pcall(api.nvim_win_get_var, win, "nnn")
-		if ok and winvar == bufmatch then return win end
+		local winvar = npcall(api.nvim_win_get_var, win, "nnn")
+		if winvar == bufmatch then return win end
 	end
 	return nil
 end
@@ -89,8 +96,8 @@ local function handle_files(iter)
 				empty = win
 				break
 			end
-			local ok, _ = pcall(api.nvim_win_get_var, win, "nnn")
-			if not ok then notnnn = win end
+			local winvar = npcall(api.nvim_win_get_var, win, "nnn")
+			if not winvar then notnnn = win end
 		end
 		if not empty and not notnnn then -- create new win
 			cmd(oppside.." "..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
@@ -158,6 +165,25 @@ end
 -- on_stdout callback for error catching
 local function on_stdout(_, data, _)
 	stdout = data
+end
+
+local function feedkeys(keys)
+	api.nvim_feedkeys(api.nvim_replace_termcodes(keys, true, true, true), "t", true)
+end
+
+-- auto_close WinClosed callback to close tabpage or quit vim
+function M.on_close()
+	schedule(function()
+		if not get_win() then return end
+		if #api.nvim_list_tabpages() == 1 then
+			if #api.nvim_list_wins() == 1 then
+				feedkeys("<C-\\><C-n>:qa<CR>")
+			end
+		elseif api.nvim_tabpage_list_wins(0) then
+			feedkeys("<C-\\><C-n>")
+			cmd("tabclose")
+		end
+	end)
 end
 
 local function buffer_setup()
@@ -243,14 +269,20 @@ local function open_picker()
 	window_setup(true)
 end
 
+local function isdir(bufname)
+	local stats = uv.fs_stat(bufname)
+	return stats and stats.type == "directory"
+end
+
 -- Toggle explorer/picker windows, keeping buffers
-function M.toggle(mode, dir, netrw)
-	local bufname, isdir
-	if netrw then
-		bufname = api.nvim_buf_get_name(api.nvim_get_current_buf())
-		local stats = uv.fs_stat(bufname)
-		isdir = stats and stats.type == "directory"
-		if not isdir then return end
+function M.toggle(mode, dir, auto)
+	if (auto == "setup" or auto == "tab") and
+		vim.tbl_contains(cfg.auto_open.ft_ignore, api.nvim_buf_get_option(0, "filetype")) then
+			return
+	end
+	local bufname = api.nvim_buf_get_name(0)
+	if auto == "netrw" then
+		if not isdir(bufname) then return end
 		api.nvim_buf_delete(0, {})
 	end
 	startdir = dir and " "..vim.fn.expand(dir).." " or isdir and " "..bufname.." " or ""
@@ -264,6 +296,7 @@ function M.toggle(mode, dir, netrw)
 		if get_win() then
 			close()
 		else
+			if auto == "" and npcall(api.nvim_win_get_var, 0, "nnn") then return end
 			open_explorer()
 		end
 	elseif mode == "picker" then
@@ -280,12 +313,13 @@ end
 function M.handle_mapping(key)
 	action = cfg.mappings[tonumber(key)][2]
 	if api.nvim_buf_get_name(0):match("NnnExplorer") then
-		api.nvim_feedkeys(api.nvim_replace_termcodes("i<CR>", true, true, true), "t", true)
+		feedkeys("i<CR>")
 	else
-		api.nvim_feedkeys("iq", "t", true)
+		feedkeys("iq")
 	end
 end
 
+-- VimResized callback to resize picker window
 function M.resize()
 	bufmatch = "NnnPicker"
 	local win = get_win()
@@ -304,8 +338,7 @@ function M.builtin.open_in_vsplit(files) open_in(files, "vsplit") end
 function M.builtin.open_in_tab(files)
 	vim.cmd("tabnew")
 	open_in(files, "edit")
-	M.toggle("explorer")
-	vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n><C-w>h", true, true, true), "t", true)
+	feedkeys("<C-\\><C-n><C-w>h")
 end
 
 function M.builtin.open_in_preview(files)
@@ -317,7 +350,7 @@ function M.builtin.open_in_preview(files)
 	if previewname ~= "" and not previewname:match(bufmatch) then
 		api.nvim_buf_delete(previewbuf, {})
 	end
-	api.nvim_set_current_win(get_win())
+	cmd("wincmd p")
 end
 
 function M.builtin.copy_to_clipboard(files)
@@ -336,7 +369,6 @@ function M.builtin.cd_to_path(files)
 	end
 end
 
--- Setup function
 function M.setup(setup_cfg)
 	if setup_cfg then cfg = vim.tbl_deep_extend("force", cfg, setup_cfg) end
 	oppside = cfg.explorer.side:match("to") and "botright" or "topleft"
@@ -347,10 +379,10 @@ function M.setup(setup_cfg)
 			vim.g.loaded_netrwPlugin = 1
 			vim.g.loaded_netrwSettings = 1
 			vim.g.loaded_netrwFileHandles = 1
-			schedule(function() M.toggle(cfg.replace_netrw, nil, true) end)
+			schedule(function() M.toggle(cfg.replace_netrw, nil, "netrw") end)
 		end
 		vim.cmd([[silent! autocmd! FileExplorer *
-							autocmd BufEnter,BufNewFile * lua require('nnn').toggle(']]..cfg.replace_netrw..[[', nil, true)]])
+				autocmd BufEnter,BufNewFile * lua require('nnn').toggle(']]..cfg.replace_netrw..[[', nil, "netrw")]])
 		if api.nvim_buf_get_option(0, "filetype") == "netrw" then api.nvim_buf_delete(0, {}) end
 	end
 	-- Version check for explorer mode
@@ -382,7 +414,16 @@ function M.setup(setup_cfg)
 	end
 	cfg.picker.cmd = cfg.picker.cmd.." -p "..pickertmp..pickersession
 	cfg.explorer.cmd = cfg.explorer.cmd.." -F1 "..explorersession
-	-- Register toggle commands, enter insertmode in nnn buffers and delete buffers on quit
+	if cfg.auto_open.setup then
+		if isdir(api.nvim_buf_get_name(0)) then api.nvim_buf_delete(0, {}) end
+		M.toggle(cfg.auto_open.setup, nil, "setup")
+	end
+	if cfg.auto_open.tabpage then
+		cmd("autocmd TabNewEntered * lua vim.schedule(function()require('nnn').toggle('"..cfg.auto_open.tabpage.."',nil,'tab')end)")
+	end
+	if cfg.auto_close then
+		cmd("autocmd WinClosed * lua require('nnn').on_close()")
+	end
 	cmd [[
 		command! -nargs=? NnnPicker lua require("nnn").toggle("picker", <q-args>)
 		command! -nargs=? NnnExplorer lua require("nnn").toggle("explorer", <q-args>)
