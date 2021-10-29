@@ -73,8 +73,7 @@ function M.save_win()
 end
 
 -- Close nnn window(keeping buffer) and create new buffer one if none left
-local function close()
-	local win = get_win()
+local function close(win)
 	if not win then return end
 	local buf = get_buf()
 	if api.nvim_win_get_buf(win) ~= buf then
@@ -281,7 +280,7 @@ function M.toggle(mode, dir, auto)
 		vim.tbl_contains(cfg.auto_open.ft_ignore, api.nvim_buf_get_option(0, "filetype"))) then
 			return
 		end
-		if isdir(bufname) then api.nvim_buf_delete(0, {}) end
+		if is_dir then api.nvim_buf_delete(0, {}) end
 	end
 	startdir = (" %s "):format(dir and vim.fn.expand(dir) or is_dir and bufname or "")
 	if mode == "explorer" then
@@ -291,15 +290,17 @@ function M.toggle(mode, dir, auto)
 			return
 		end
 		bufmatch = "NnnExplorer"..(cfg.explorer.tabs and api.nvim_get_current_tabpage() or "")
-		if get_win() then
-			close()
+		local win = get_win()
+		if win then
+			close(win)
 		else
 			open_explorer()
 		end
 	elseif mode == "picker" then
 		bufmatch = "NnnPicker"
-		if get_win() then
-			close()
+		local win = get_win()
+		if win then
+			close(win)
 		else
 			open_picker()
 		end
