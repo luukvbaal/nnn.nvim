@@ -56,8 +56,7 @@ end
 local function get_win()
 	if not bufmatch then return nil end
 	for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
-		local winvar = npcall(api.nvim_win_get_var, win, "nnn")
-		if winvar == bufmatch then return win end
+		if npcall(api.nvim_win_get_var, win, "nnn") == bufmatch then return win end
 	end
 	return nil
 end
@@ -98,8 +97,7 @@ local function handle_files(iter)
 				empty = win
 				break
 			end
-			local winvar = npcall(api.nvim_win_get_var, win, "nnn")
-			if not winvar then notnnn = win end
+			if not npcall(api.nvim_win_get_var, win, "nnn") then notnnn = win end
 		end
 		if not empty and not notnnn then -- create new win
 			cmd(oppside.." "..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
@@ -290,7 +288,7 @@ function M.toggle(mode, dir, auto)
 		end
 		if isdir(bufname) then api.nvim_buf_delete(0, {}) end
 	end
-	startdir = dir and " "..vim.fn.expand(dir).." " or is_dir and " "..bufname.." " or ""
+	startdir = (" %s "):format(dir and vim.fn.expand(dir) or is_dir and bufname or "")
 	if mode == "explorer" then
 		if nnnver < 4.3 then
 			print("NnnExplorer requires nnn version >= v4.3. Currently installed: "..
@@ -375,7 +373,7 @@ end
 
 function M.setup(setup_cfg)
 	if setup_cfg then cfg = vim.tbl_deep_extend("force", cfg, setup_cfg) end
-	oppside = cfg.explorer.side:match("to") and "botright" or "topleft"
+	oppside = cfg.explorer.side:match("to") and "botright " or "topleft "
 	-- Replace netrw plugin if config is set
 	if cfg.replace_netrw then
 		if not vim.g.loaded_netrw then
