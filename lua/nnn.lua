@@ -100,7 +100,7 @@ local function handle_files(iter)
 			if not npcall(api.nvim_win_get_var, win, "nnn") then notnnn = win end
 		end
 		if not empty and not notnnn then -- create new win
-			cmd(oppside.." "..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
+			cmd(oppside..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
 			targetwin = api.nvim_get_current_win()
 		end
 	end
@@ -168,20 +168,15 @@ local function on_stdout(_, data, _)
 end
 
 local function feedkeys(keys)
-	api.nvim_feedkeys(api.nvim_replace_termcodes(keys, true, true, true), "t", true)
+	api.nvim_feedkeys(api.nvim_replace_termcodes(keys, true, true, true), "m", true)
 end
 
 -- auto_close WinClosed callback to close tabpage or quit vim
 function M.on_close()
 	schedule(function()
-		if not get_win() then return end
-		if #api.nvim_list_tabpages() == 1 then
-			if #api.nvim_list_wins() == 1 then
-				feedkeys("<C-\\><C-n>:qa<CR>")
-			end
-		elseif api.nvim_tabpage_list_wins(0) then
-			feedkeys("<C-\\><C-n>")
-			cmd("tabclose")
+		if not npcall(api.nvim_win_get_var, 0, "nnn") then return end
+		if #api.nvim_tabpage_list_wins(0) == 1 then
+			feedkeys("<C-\\><C-n><cmd>"..(#api.nvim_list_tabpages() == 1 and "qa" or "tabc").."<CR>")
 		end
 	end)
 end
@@ -314,11 +309,7 @@ end
 -- Handle user defined mappings
 function M.handle_mapping(key)
 	action = cfg.mappings[tonumber(key)][2]
-	if api.nvim_buf_get_name(0):match("NnnExplorer") then
-		feedkeys("i<CR>")
-	else
-		feedkeys("iq")
-	end
+	feedkeys("i"..(api.nvim_buf_get_name(0):match("NnnExplorer") and "<CR>" or "q"))
 end
 
 -- VimResized callback to resize picker window
