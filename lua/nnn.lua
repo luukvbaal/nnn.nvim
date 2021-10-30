@@ -175,7 +175,7 @@ function M.on_close()
 	schedule(function()
 		if not npcall(api.nvim_win_get_var, 0, "nnn") then return end
 		if #api.nvim_tabpage_list_wins(0) == 1 then
-			feedkeys("<C-\\><C-n><cmd>"..(#api.nvim_list_tabpages() == 1 and "qa" or "tabc").."<CR>")
+			feedkeys("<C-\\><C-n><cmd>q<CR>")
 		end
 	end)
 end
