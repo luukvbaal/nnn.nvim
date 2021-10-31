@@ -373,11 +373,13 @@ function M.setup(setup_cfg)
 			vim.g.loaded_netrwPlugin = 1
 			vim.g.loaded_netrwSettings = 1
 			vim.g.loaded_netrwFileHandles = 1
-			schedule(function() M.toggle(cfg.replace_netrw, nil, "netrw") end)
 		end
-		vim.cmd([[silent! autocmd! FileExplorer *
+		schedule(function()
+			M.toggle(cfg.replace_netrw, nil, "netrw")
+			if api.nvim_buf_get_option(0, "filetype") == "netrw" then api.nvim_buf_delete(0, {}) end
+			vim.cmd([[silent! autocmd! FileExplorer *
 				autocmd BufEnter,BufNewFile * lua require('nnn').toggle(']]..cfg.replace_netrw..[[', nil, "netrw")]])
-		if api.nvim_buf_get_option(0, "filetype") == "netrw" then api.nvim_buf_delete(0, {}) end
+		end)
 	end
 	-- Version check for explorer mode
 	local verfd = io.popen("nnn -V")
@@ -408,7 +410,9 @@ function M.setup(setup_cfg)
 	end
 	cfg.picker.cmd = cfg.picker.cmd.." -p "..pickertmp..pickersession
 	cfg.explorer.cmd = cfg.explorer.cmd.." -F1 "..explorersession
-	if cfg.auto_open.setup then schedule(function() M.toggle(cfg.auto_open.setup, nil, "setup")end) end
+	if cfg.auto_open.setup and not (cfg.replace_netrw and isdir(api.nvim_buf_get_name(0))) then
+		schedule(function() M.toggle(cfg.auto_open.setup, nil, "setup") end)
+	end
 	if cfg.auto_close then cmd("autocmd WinClosed * lua require('nnn').on_close()") end
 	if cfg.auto_open.tabpage then
 		cmd("autocmd TabNewEntered * lua vim.schedule(function()require('nnn').toggle('"..cfg.auto_open.tabpage.."',nil,'tab')end)")
