@@ -8,7 +8,7 @@ local min = math.min
 local max = math.max
 local floor = math.floor
 -- forward declarations
-local nnnver, action, stdout, bufmatch, startdir, pickerid, oppside
+local nnnver, action, stdout, bufmatch, startdir, pickerid, oppside, targetwin
 local M = {}
 M.builtin = {}
 -- initialization
@@ -16,7 +16,6 @@ local pickertmp = fn.tempname().."-picker"
 local explorertmp = fn.tempname().."-explorer"
 local nnnopts = os.getenv("NNN_OPTS")
 local term = os.getenv("TERM")
-local targetwin = api.nvim_get_current_win()
 local exploreropts = nnnopts and nnnopts:gsub("a", "") or ""
 
 local cfg = {
@@ -44,9 +43,23 @@ local cfg = {
 	windownav = { left = "<C-w>h", right = "<C-w>l" },
 }
 
+local winopts = {
+	number = false,
+	relativenumber = false,
+	wrap = false,
+	winfixwidth = true,
+	winfixheight = true,
+	winhighlight = "Normal:NnnNormal,NormalNC:NnnNormalNC,FloatBorder:NnnBorder",
+}
+
+local bufopts = {
+	buftype = "terminal",
+	filetype = "nnn",
+}
+
 -- Return buffer matching global bufmatch<tab>
 local function get_buf()
-	for _, buf in pairs(api.nvim_list_bufs()) do
+	for _, buf in ipairs(api.nvim_list_bufs()) do
 		if api.nvim_buf_get_name(buf):match(bufmatch) then return buf end
 	end
 	return nil
@@ -55,7 +68,7 @@ end
 -- Return window containing buffer matching global bufmatch
 local function get_win()
 	if not bufmatch then return nil end
-	for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
+	for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
 		if npcall(api.nvim_win_get_var, win, "nnn") == bufmatch then return win end
 	end
 	return nil
@@ -100,7 +113,6 @@ local function handle_files(iter)
 		end
 		if not empty and not notnnn then -- create new win
 			cmd(oppside..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
-			targetwin = api.nvim_get_current_win()
 		end
 	end
 	api.nvim_set_current_win(targetwin or empty or notnnn)
@@ -182,17 +194,17 @@ end
 
 local function buffer_setup()
 	api.nvim_buf_set_name(0, bufmatch)
-	cmd("setlocal nonumber norelativenumber wrap winfixwidth winfixheight noshowmode buftype=terminal filetype=nnn")
+	for opt, val in pairs(bufopts) do api.nvim_buf_set_option(0, opt, val) end
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.left, "<C-\\><C-n><C-w>h", {})
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.right, "<C-\\><C-n><C-w>l", {})
-	for i = 1, #cfg.mappings do
-		api.nvim_buf_set_keymap(0, "t", cfg.mappings[i][1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('"..i.."')<CR>", {})
+	for i, mapping in ipairs(cfg.mappings) do
+		api.nvim_buf_set_keymap(0, "t", mapping[1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('"..i.."')<CR>", {})
 	end
 end
 
-local function window_setup(float)
+local function window_setup()
 	api.nvim_win_set_var(0, "nnn", bufmatch)
-	api.nvim_win_set_option(0, "winhighlight", "Normal:NnnNormal,NormalNC:NnnNormalNC"..(float and ",FloatBorder:NnnBorder" or ""))
+	for opt, val in pairs(winopts) do api.nvim_win_set_option(0, opt, val) end
 	cmd("startinsert")
 end
 
@@ -260,7 +272,7 @@ local function open_picker()
 	else
 		api.nvim_win_set_buf(win, buf)
 	end
-	window_setup(true)
+	window_setup()
 end
 
 local function isdir(bufname)
@@ -322,15 +334,15 @@ end
 
 -- Builtin mapping functions
 local function open_in(files, command)
-	for i = 1, #files do
-		vim.cmd(command.." "..vim.fn.fnameescape(files[i]))
+	for file in ipairs(files) do
+		cmd(command.." "..vim.fn.fnameescape(file))
 	end
 end
 
 function M.builtin.open_in_split(files) open_in(files, "split") end
 function M.builtin.open_in_vsplit(files) open_in(files, "vsplit") end
 function M.builtin.open_in_tab(files)
-	vim.cmd("tabnew")
+	cmd("tabnew")
 	open_in(files, "edit")
 	feedkeys("<C-\\><C-n><C-w>h")
 end
@@ -377,7 +389,7 @@ function M.setup(setup_cfg)
 		schedule(function()
 			M.toggle(cfg.replace_netrw, nil, "netrw")
 			if api.nvim_buf_get_option(0, "filetype") == "netrw" then api.nvim_buf_delete(0, {}) end
-			vim.cmd([[silent! autocmd! FileExplorer *
+			cmd([[silent! autocmd! FileExplorer *
 				autocmd BufEnter,BufNewFile * lua require('nnn').toggle(']]..cfg.replace_netrw..[[', nil, "netrw")]])
 		end)
 	end
