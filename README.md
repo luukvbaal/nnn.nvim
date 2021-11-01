@@ -1,7 +1,12 @@
 # nnn.nvim
 
 File manager for Neovim powered by [nnn](https://github.com/jarun/nnn).
+
+<!-- panvimdoc-ignore-start -->
+
 ![img](https://i.imgur.com/mtpBKUl.png)
+
+<!-- panvimdoc-ignore-end -->
 
 ## Install
 
@@ -9,6 +14,8 @@ Requires nnn to be installed, follow the [instructions](https://github.com/jarun
 
 **NOTE:** Explorer mode requires nnn version v4.3.
 If your distribution doesn't provide version v4.3 from its repositories, install one of the provided [static binaries](https://github.com/jarun/nnn/releases/tag/v4.3), [OBS packages](https://software.opensuse.org//download.html?project=home%3Astig124%3Annn&package=nnn) or [build from source](https://github.com/jarun/nnn/wiki/Usage#from-source).
+
+<!-- panvimdoc-ignore-start -->
 
 Then install the plugin using your plugin manager:
 
@@ -31,6 +38,8 @@ use {
 	config = function() require("nnn").setup() end
 }
 ```
+
+<!-- panvimdoc-ignore-end -->
 
 ## Usage
 
@@ -153,9 +162,19 @@ Alternatively you can set the session `"shared"` to share the same session betwe
 ### Git status
 
 [Build](https://github.com/jarun/nnn/tree/master/patches#list-of-patches) and install nnn with the [gitstatus](https://github.com/jarun/nnn/blob/master/patches/gitstatus/mainline.diff) patch and add the `-G` flag to your command override to enable git status symbols.
+
+<!-- panvimdoc-ignore-start -->
+
 ![img](https://i.imgur.com/LLd8Oq5.png)
+
+<!-- panvimdoc-ignore-end -->
 
 ### preview-tui
 
 Setting the command override for picker mode to for example `tmux new-session nnn -P<plugin-key>` will open `tmux` inside the picker window and can be used to open [`preview-tui`](https://github.com/jarun/nnn/blob/master/plugins/preview-tui) inside the floating window:
+
+<!-- panvimdoc-ignore-start -->
+
 ![img](https://i.imgur.com/OhfK12S.gif)
+
+<!-- panvimdoc-ignore-end -->
