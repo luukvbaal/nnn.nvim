@@ -2,13 +2,13 @@ local api = vim.api
 local uv = vim.loop
 local cmd = vim.cmd
 local fn = vim.fn
-local npcall = vim.F.npcall
 local schedule = vim.schedule
 local min = math.min
 local max = math.max
 local floor = math.floor
 -- forward declarations
 local nnnver, action, stdout, startdir, oppside, targetwin
+local state = { explorer = {}, picker = {} }
 local M = {}
 M.builtin = {}
 -- initialization
@@ -58,20 +58,19 @@ local bufopts = {
 }
 
 -- Close nnn window(keeping buffer) and create new buffer if none left
-local function close(state, mode)
-	if api.nvim_win_get_buf(state[mode].win) ~= state[mode].buf then
-		api.nvim_win_set_buf(state[mode].win, state[mode].buf)
+local function close(mode, tab)
+	if api.nvim_win_get_buf(state[mode][tab].win) ~= state[mode][tab].buf then
+		api.nvim_win_set_buf(state[mode][tab].win, state[mode][tab].buf)
 		return
 	end
 
 	if #api.nvim_tabpage_list_wins(0) == 1 then
-		api.nvim_win_set_buf(state[mode].win, api.nvim_create_buf(false, false))
+		api.nvim_win_set_buf(state[mode][tab].win, api.nvim_create_buf(false, false))
 	else
-		api.nvim_win_close(state[mode].win, true)
+		api.nvim_win_close(state[mode][tab].win, true)
 	end
 
-	state[mode].win = nil
-	api.nvim_tabpage_set_var(0, "nnnstate", state)
+	state[mode][tab].win = nil
 end
 
 local function handle_files(iter)
@@ -136,29 +135,27 @@ end
 
 -- on_exit callback for picker mode
 local function on_exit(id, code)
-	local state = npcall(api.nvim_tabpage_get_var, 0, "nnnstate")
-	local mode = state.picker and state.picker.id == id and "picker" or "explorer"
-	state[mode] = nil
-	api.nvim_tabpage_set_var(0, "nnnstate", state)
+	local tab = api.nvim_get_current_tabpage()
+	local mode = state.explorer and state.explorer[tab].id == id and "explorer" or "picker"
 
 	if code > 0 then
 		schedule(function() print(stdout and stdout[1]:sub(1, -2)) end)
-		return
-	end
+	else
+		if api.nvim_win_is_valid(state[mode][tab].win) then
+			if #api.nvim_tabpage_list_wins(0) == 1 then cmd("split") end
+			api.nvim_win_close(state[mode][tab].win, true)
+		end
 
-	if api.nvim_win_is_valid(state[mode].win) then
-		if #api.nvim_tabpage_list_wins(0) == 1 then cmd("split") end
-		api.nvim_win_close(state[mode].win, true)
-	end
-
-	if mode == "picker" then
-		local fd, err = io.open(pickertmp, "r")
-		if fd then
-			handle_files(io.lines(pickertmp))
-		else
-			print(err)
+		if mode == "picker" then
+			local fd, err = io.open(pickertmp, "r")
+			if fd then
+				handle_files(io.lines(pickertmp))
+			else
+				print(err)
+			end
 		end
 	end
+	state[mode][mode == "explorer" and tab or 1] = {}
 end
 
 -- on_stdout callback for error catching
@@ -203,9 +200,9 @@ local function window_setup()
 end
 
 -- Open explorer split and set local buffer options and mappings
-local function open_explorer(state)
-	local id
-	local buf = state and state.explorer and state.explorer.buf
+local function open_explorer(tab)
+	local id = state.explorer[tab] and state.explorer[tab].id
+	local buf = state.explorer[tab] and state.explorer[tab].buf
 	if not buf then
 		cmd(cfg.explorer.side.." "..cfg.explorer.width.."vnew")
 
@@ -223,8 +220,7 @@ local function open_explorer(state)
 	end
 
 	window_setup()
-	state.explorer = { win = api.nvim_get_current_win(), buf = buf or api.nvim_get_current_buf(), id = id }
-	api.nvim_tabpage_set_var(0, "nnnstate", state)
+	state.explorer[tab] = { win = api.nvim_get_current_win(), buf = buf or api.nvim_get_current_buf(), id = id }
 end
 
 -- Calculate window size and return table
@@ -243,9 +239,9 @@ local function get_win_size()
 end
 
 -- Create floating window for NnnPicker
-local function create_float(state)
+local function create_float()
 	local new
-	local buf = state and state.picker and state.picker.buf
+	local buf = state.picker[1] and state.picker[1].buf
 	local wincfg = get_win_size()
 	wincfg.style = "minimal"
 	wincfg.border = cfg.picker.style.border
@@ -262,9 +258,9 @@ local function create_float(state)
 end
 
 -- Open picker float and set local buffer options and mappings
-local function open_picker(state)
+local function open_picker()
 	local id
-	local win, buf, new = create_float(state)
+	local win, buf, new = create_float()
 
 	if new then
 		id = fn.termopen(cfg.picker.cmd..startdir, {
@@ -280,8 +276,7 @@ local function open_picker(state)
 	end
 
 	window_setup()
-	state.picker = { win = win, buf = buf, id = id }
-	api.nvim_tabpage_set_var(0, "nnnstate", state)
+	state.picker[1] = { win = win, buf = buf, id = id }
 end
 
 local function isdir(bufname)
@@ -307,10 +302,9 @@ function M.toggle(mode, dir, auto)
 	end
 
 	startdir = (" %s "):format(dir and vim.fn.expand(dir) or is_dir and bufname or "")
-
-	local state = npcall(api.nvim_tabpage_get_var, 0, "nnnstate") or {}
-	if state and state[mode] and state[mode].win then
-		close(state, mode)
+	local tab = mode == "picker" and 1 or api.nvim_get_current_tabpage()
+	if state[mode][tab] and state[mode][tab].win then
+		close(mode, tab)
 	elseif mode == "explorer" then
 		if nnnver < 4.3 then
 			print("NnnExplorer requires nnn version >= v4.3. Currently installed: "..
@@ -318,9 +312,9 @@ function M.toggle(mode, dir, auto)
 			return
 		end
 
-		open_explorer(state)
+		open_explorer(tab)
 	elseif mode == "picker" then
-		open_picker(state)
+		open_picker()
 	end
 end
 
@@ -343,19 +337,19 @@ end
 
 -- VimResized callback to resize picker window
 function M.resize()
-	local win = npcall(api.nvim_tabpage_get_var, 0, "nnnstate").picker.win
+	local win = state and state.picker and state.picker.win
 	if win then api.nvim_win_set_config(win, get_win_size()) end
 end
 
 -- BufDelete callback to clear mode from state
 function M.clear_state(bufname)
-	local state = npcall(api.nvim_tabpage_get_var, 0, "nnnstate")
 	state[bufname:match("explorer") and "explorer" or "picker"] = nil
 end
 
 -- Builtin mapping functions
 local function open_in(files, command)
-	for file in ipairs(files) do
+	for _, file in ipairs(files) do
+		print(file)
 		cmd(command.." "..vim.fn.fnameescape(file))
 	end
 end
