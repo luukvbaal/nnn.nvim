@@ -85,7 +85,7 @@ local function handle_files(iter)
 				break
 			end
 
-			if not npcall(api.nvim_win_get_var, win, "nnn") then
+			if api.nvim_buf_get_option(0, "filetype") ~= "nnn" then
 				notnnn = win
 			end
 		end
@@ -173,7 +173,7 @@ end
 -- auto_close WinClosed callback to close tabpage or quit vim
 function M.on_close()
 	schedule(function()
-		if not npcall(api.nvim_win_get_var, 0, "nnn") then return end
+		if api.nvim_buf_get_option(0, "filetype") ~= "nnn" then return end
 
 		if #api.nvim_tabpage_list_wins(0) == 1 then
 			feedkeys("<C-\\><C-n><cmd>q<CR>")
