@@ -159,3 +159,4 @@ Alternatively you can set the session `"shared"` to share the same session betwe
 
 Setting the command override for picker mode to for example `tmux new-session nnn -P<plugin-key>` will open `tmux` inside the picker window and can be used to open [`preview-tui`](https://github.com/jarun/nnn/blob/master/plugins/preview-tui) inside the floating window:
 ![img](https://i.imgur.com/OhfK12S.gif)
+test
