@@ -136,8 +136,10 @@ end
 
 -- on_exit callback for picker mode
 local function on_exit(id, code)
-	local tab = api.nvim_get_current_tabpage()
-	local mode = state.explorer and state.explorer[tab].id == id and "explorer" or "picker"
+	local mode = state.picker[1] and state.picker[1].id == id and "picker" or "explorer"
+	local tab = (mode == "explorer" and cfg.explorer.tabs) and api.nvim_get_current_tabpage() or 1
+	print(mode)
+	print(tab)
 
 	if code > 0 then
 		schedule(function() print(stdout and stdout[1]:sub(1, -2)) end)
@@ -156,7 +158,7 @@ local function on_exit(id, code)
 			end
 		end
 	end
-	state[mode][mode == "explorer" and tab or 1] = {}
+	state[mode][tab] = {}
 end
 
 -- on_stdout callback for error catching
@@ -179,7 +181,7 @@ function M.on_close()
 	end)
 end
 
-local function buffer_setup(mode)
+local function buffer_setup(mode, tab)
 	for opt, val in pairs(bufopts) do
 		api.nvim_buf_set_option(0, opt, val)
 	end
@@ -190,7 +192,7 @@ local function buffer_setup(mode)
 
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.left, "<C-\\><C-n><C-w>h", {})
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.right, "<C-\\><C-n><C-w>l", {})
-	api.nvim_buf_set_name(0, "nnn"..mode..api.nvim_get_current_tabpage())
+	api.nvim_buf_set_name(0, "nnn"..mode..tab)
 end
 
 local function window_setup()
@@ -215,7 +217,7 @@ local function open_explorer(tab)
 			stdout_buffered = true
 		})
 
-		buffer_setup("explorer")
+		buffer_setup("explorer", tab)
 		read_fifo()
 	else
 		cmd(cfg.explorer.side.." "..cfg.explorer.width.."vsplit+"..buf.."buffer")
@@ -272,7 +274,7 @@ local function open_picker()
 			stdout_buffered = true
 		})
 
-		buffer_setup("picker")
+		buffer_setup("picker", 1)
 	else
 		api.nvim_win_set_buf(win, buf)
 	end
@@ -303,8 +305,8 @@ function M.toggle(mode, dir, auto)
 		end
 	end
 
-	startdir = (" %s "):format(dir and vim.fn.expand(dir) or is_dir and bufname or "")
-	local tab = mode == "picker" and 1 or api.nvim_get_current_tabpage()
+	startdir = (" %s "):format(dir and fn.expand(dir) or is_dir and bufname or "")
+	local tab = mode == "explorer" and cfg.explorer.tabs and api.nvim_get_current_tabpage() or 1
 	if state[mode][tab] and state[mode][tab].win then
 		close(mode, tab)
 	elseif mode == "explorer" then
@@ -352,7 +354,7 @@ end
 local function open_in(files, command)
 	for _, file in ipairs(files) do
 		print(file)
-		cmd(command.." "..vim.fn.fnameescape(file))
+		cmd(command.." "..fn.fnameescape(file))
 	end
 end
 
@@ -382,7 +384,7 @@ end
 
 function M.builtin.copy_to_clipboard(files)
 	files = table.concat(files, "\n")
-	vim.fn.setreg("+", files)
+	fn.setreg("+", files)
 	vim.defer_fn(function() print(files:gsub("\n", ", ").." copied to register") end, 0)
 end
 
@@ -392,7 +394,7 @@ function M.builtin.cd_to_path(files)
 
 	if read ~= nil then
 		io.close(read)
-		vim.fn.execute("cd "..dir)
+		fn.execute("cd "..dir)
 		vim.defer_fn(function() print("working directory changed to: "..dir) end, 0)
 	end
 end
