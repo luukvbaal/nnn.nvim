@@ -138,8 +138,6 @@ end
 local function on_exit(id, code)
 	local mode = state.picker[1] and state.picker[1].id == id and "picker" or "explorer"
 	local tab = (mode == "explorer" and cfg.explorer.tabs) and api.nvim_get_current_tabpage() or 1
-	print(mode)
-	print(tab)
 
 	if code > 0 then
 		schedule(function() print(stdout and stdout[1]:sub(1, -2)) end)
@@ -307,7 +305,10 @@ function M.toggle(mode, dir, auto)
 
 	startdir = (" %s "):format(dir and fn.expand(dir) or is_dir and bufname or "")
 	local tab = mode == "explorer" and cfg.explorer.tabs and api.nvim_get_current_tabpage() or 1
-	if state[mode][tab] and state[mode][tab].win then
+	local win = state[mode][tab] and state[mode][tab].win
+	win = cfg.explorer.tabs and win or table.contains(api.nvim_tabpage_list_wins(0), win)
+
+	if win then
 		close(mode, tab)
 	elseif mode == "explorer" then
 		if nnnver < 4.3 then
