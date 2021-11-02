@@ -7,7 +7,8 @@ local min = math.min
 local max = math.max
 local floor = math.floor
 -- forward declarations
-local nnnver, action, stdout, startdir, oppside, targetwin
+local nnnver, action, stdout, startdir, oppside
+local targetwin = api.nvim_get_current_win()
 local state = { explorer = {}, picker = {} }
 local M = {}
 M.builtin = {}
@@ -203,6 +204,7 @@ end
 local function open_explorer(tab)
 	local id = state.explorer[tab] and state.explorer[tab].id
 	local buf = state.explorer[tab] and state.explorer[tab].buf
+
 	if not buf then
 		cmd(cfg.explorer.side.." "..cfg.explorer.width.."vnew")
 
