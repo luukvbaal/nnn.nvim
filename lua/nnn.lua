@@ -281,15 +281,15 @@ local function open_picker()
 	state.picker[1] = { win = win, buf = buf, id = id }
 end
 
-local function isdir(bufname)
-	local stats = uv.fs_stat(bufname)
-	return stats and stats.type == "directory"
+local function stat(name, type)
+	local stats = uv.fs_stat(name)
+	return stats and stats.type == type
 end
 
 -- Toggle explorer/picker windows, keeping buffers
 function M.toggle(mode, dir, auto)
 	local bufname = api.nvim_buf_get_name(0)
-	local is_dir = isdir(bufname)
+	local is_dir = stat(bufname, "directory")
 
 	if auto == "netrw" then
 		if not is_dir then return end
@@ -461,12 +461,15 @@ function M.setup(setup_cfg)
 		end
 	end
 
-	os.execute("mkfifo "..explorertmp)
+	if not stat(explorertmp, "fifo") then 
+		os.execute("mkfifo "..explorertmp)
+	end
+
 	oppside = cfg.explorer.side:match("to") and "botright " or "topleft "
 	cfg.picker.cmd = cfg.picker.cmd.." -p "..pickertmp..pickersession
 	cfg.explorer.cmd = cfg.explorer.cmd.." -F1 "..explorersession
 
-	if cfg.auto_open.setup and not (cfg.replace_netrw and isdir(api.nvim_buf_get_name(0))) then
+	if cfg.auto_open.setup and not (cfg.replace_netrw and stat(api.nvim_buf_get_name(0), "directory")) then
 		schedule(function() M.toggle(cfg.auto_open.setup, nil, "setup") end)
 	end
 
