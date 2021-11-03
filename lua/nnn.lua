@@ -306,7 +306,7 @@ function M.toggle(mode, dir, auto)
 	startdir = (" %s "):format(dir and fn.expand(dir) or is_dir and bufname or "")
 	local tab = mode == "explorer" and cfg.explorer.tabs and api.nvim_get_current_tabpage() or 1
 	local win = state[mode][tab] and state[mode][tab].win
-	win = cfg.explorer.tabs and win or table.contains(api.nvim_tabpage_list_wins(0), win)
+	win = cfg.explorer.tabs and win or vim.tbl_contains(api.nvim_tabpage_list_wins(0), win)
 
 	if win then
 		close(mode, tab)
@@ -461,7 +461,7 @@ function M.setup(setup_cfg)
 		end
 	end
 
-	if not stat(explorertmp, "fifo") then 
+	if not stat(explorertmp, "fifo") then
 		os.execute("mkfifo "..explorertmp)
 	end
 
