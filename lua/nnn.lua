@@ -133,17 +133,33 @@ local function read_fifo()
 	end)
 end
 
--- on_exit callback for picker mode
+-- on_exit callback for termopen
 local function on_exit(id, code)
+	local win
+	local tabpage = 1
 	local mode = state.picker[1] and state.picker[1].id == id and "picker" or "explorer"
-	local tab = (mode == "explorer" and cfg.explorer.tabs) and api.nvim_get_current_tabpage() or 1
+
+	if mode == "picker" then
+		win = state.picker.win
+	else
+		for tab, stat in pairs(state.explorer) do
+			if stat.id == id then
+				tabpage = tab
+				win = stat.win
+				break
+			end
+		end
+	end
+	state[mode][tabpage] = {}
 
 	if code > 0 then
 		schedule(function() print(stdout and stdout[1]:sub(1, -2)) end)
 	else
-		if api.nvim_win_is_valid(state[mode][tab].win) then
-			if #api.nvim_tabpage_list_wins(0) == 1 then cmd("split") end
-			api.nvim_win_close(state[mode][tab].win, true)
+		if api.nvim_win_is_valid(win) then
+			if #api.nvim_tabpage_list_wins(0) == 1 then
+				cmd("split")
+			end
+			api.nvim_win_close(win, true)
 		end
 
 		if mode == "picker" then
@@ -155,7 +171,6 @@ local function on_exit(id, code)
 			end
 		end
 	end
-	state[mode][tab] = {}
 end
 
 -- on_stdout callback for error catching
@@ -165,17 +180,6 @@ end
 
 local function feedkeys(keys)
 	api.nvim_feedkeys(api.nvim_replace_termcodes(keys, true, true, true), "m", true)
-end
-
--- auto_close WinClosed callback to close tabpage or quit vim
-function M.on_close()
-	schedule(function()
-		if api.nvim_buf_get_option(0, "filetype") ~= "nnn" then return end
-
-		if #api.nvim_tabpage_list_wins(0) == 1 then
-			feedkeys("<C-\\><C-n><cmd>q<CR>")
-		end
-	end)
 end
 
 local function buffer_setup(mode, tab)
@@ -329,7 +333,7 @@ function M.handle_mapping(key)
 end
 
 -- WinEnter callback to save target window filtering out nnn windows
-function M.save_win()
+function M.win_enter()
 	schedule(function()
 		if api.nvim_buf_get_option(api.nvim_win_get_buf(0), "filetype") ~= "nnn" then
 			targetwin = api.nvim_get_current_win()
@@ -339,15 +343,28 @@ function M.save_win()
 	end)
 end
 
--- VimResized callback to resize picker window
-function M.resize()
-	local win = state and state.picker and state.picker.win
-	if win then api.nvim_win_set_config(win, get_win_size()) end
+-- WinClosed callback for auto_close to close tabpage or quit vim
+function M.win_closed()
+	schedule(function()
+		if api.nvim_buf_get_option(0, "filetype") ~= "nnn" then return end
+		if #api.nvim_tabpage_list_wins(0) == 1 then
+			feedkeys("<C-\\><C-n><cmd>q<CR>")
+		end
+	end)
 end
 
--- BufDelete callback to clear mode from state
-function M.clear_state(bufname)
-	state[bufname:match("explorer") and "explorer" or "picker"] = nil
+-- TabClosed callback to clear tab from state
+function M.tab_closed(tab)
+	local buf = state.explorer[tab].buf
+	if buf and api.nvim_buf_is_valid(buf) then
+		 api.nvim_buf_delete(buf, { force = true })
+	end
+end
+
+-- VimResized callback to resize picker window
+function M.vim_resized()
+	local win = state and state.picker and state.picker.win
+	if win then api.nvim_win_set_config(win, get_win_size()) end
 end
 
 -- Builtin mapping functions
@@ -472,7 +489,7 @@ function M.setup(setup_cfg)
 	end
 
 	if cfg.auto_close then
-		cmd("autocmd WinClosed * lua require('nnn').on_close()")
+		cmd("autocmd WinClosed * lua require('nnn').win_closed()")
 	end
 
 	if cfg.auto_open.tabpage then
@@ -484,11 +501,11 @@ function M.setup(setup_cfg)
 		command! -nargs=? NnnExplorer lua require("nnn").toggle("explorer", <q-args>)
 		augroup nnn
 			autocmd!
-			autocmd WinEnter * :lua require("nnn").save_win()
+			autocmd WinEnter * :lua require("nnn").win_enter()
 			autocmd TermClose * if &ft ==# "nnn" | :bdelete! | endif
 			autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
-			autocmd BufDelete * if &ft ==# "nnn" | lua require('nnn').clear_state(<abuf>) | endif
-			autocmd VimResized * if &ft ==# "nnn" | execute 'lua require("nnn").resize()' | endif
+			autocmd VimResized * if &ft ==# "nnn" | execute 'lua require("nnn").vim_resized()' | endif
+			autocmd TabClosed * :lua require("nnn").tab_closed(tonumber(vim.fn.expand("<afile>")))
 		augroup end
 		highlight default link NnnBorder FloatBorder
 		highlight default link NnnNormal Normal
