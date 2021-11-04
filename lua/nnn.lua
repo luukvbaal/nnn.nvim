@@ -484,11 +484,14 @@ function M.setup(setup_cfg)
 	cmd [[
 		command! -nargs=? NnnPicker lua require("nnn").toggle("picker", <q-args>)
 		command! -nargs=? NnnExplorer lua require("nnn").toggle("explorer", <q-args>)
-		autocmd WinEnter * :lua require("nnn").save_win()
-		autocmd TermClose * if &ft ==# "nnn" | :bdelete! | endif
-		autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
-		autocmd BufDelete * if &ft ==# "nnn" | lua require('nnn').clear_state(<abuf>) | endif
-		autocmd VimResized * if &ft ==# "nnn" | execute 'lua require("nnn").resize()' | endif
+		augroup nnn
+			autocmd!
+			autocmd WinEnter * :lua require("nnn").save_win()
+			autocmd TermClose * if &ft ==# "nnn" | :bdelete! | endif
+			autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
+			autocmd BufDelete * if &ft ==# "nnn" | lua require('nnn').clear_state(<abuf>) | endif
+			autocmd VimResized * if &ft ==# "nnn" | execute 'lua require("nnn").resize()' | endif
+		augroup end
 		highlight default link NnnBorder FloatBorder
 		highlight default link NnnNormal Normal
 		highlight default link NnnNormalNC Normal
