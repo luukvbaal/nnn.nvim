@@ -10,8 +10,7 @@ local floor = math.floor
 local nnnver, action, stdout, startdir, oppside
 local targetwin = api.nvim_get_current_win()
 local state = { explorer = {}, picker = {} }
-local M = {}
-M.builtin = {}
+local M = { builtin = {} }
 -- initialization
 local pickertmp = fn.tempname().."-picker"
 local explorertmp = fn.tempname().."-explorer"
@@ -354,7 +353,6 @@ end
 -- Builtin mapping functions
 local function open_in(files, command)
 	for _, file in ipairs(files) do
-		print(file)
 		cmd(command.." "..fn.fnameescape(file))
 	end
 end
