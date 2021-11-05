@@ -416,7 +416,7 @@ function M.builtin.cd_to_path(files)
 end
 
 function M.builtin.populate_cmdline(files)
-	feedkeys(":"..table.concat(files, "\n"):gsub("\n", " ").."<C-b>")
+	feedkeys(": "..table.concat(files, "\n"):gsub("\n", " ").."<C-b>")
 end
 
 function M.setup(setup_cfg)
