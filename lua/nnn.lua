@@ -355,7 +355,7 @@ end
 
 -- TabClosed callback to clear tab from state
 function M.tab_closed(tab)
-	local buf = state.explorer[tab].buf
+	local buf = state.explorer[tab] and state.explorer[tab].buf
 	if buf and api.nvim_buf_is_valid(buf) then
 		 api.nvim_buf_delete(buf, { force = true })
 	end
