@@ -415,6 +415,10 @@ function M.builtin.cd_to_path(files)
 	end
 end
 
+function M.builtin.populate_cmdline(files)
+	feedkeys(":"..table.concat(files, "\n"):gsub("\n", " ").."<C-b>")
+end
+
 function M.setup(setup_cfg)
 	if setup_cfg then
 		cfg = vim.tbl_deep_extend("force", cfg, setup_cfg)

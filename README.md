@@ -140,6 +140,7 @@ A set of builtin functions is provided which can be used as follows:
 		{ "<C-p>", builtin.open_in_preview },   -- open file in preview split keeping nnn focused
 		{ "<C-y>", builtin.copy_to_clipboard }, -- copy file(s) to clipboard
 		{ "<C-w>", builtin.cd_to_path },        -- cd to file directory
+		{ "<C-e>", builtin.populate_cmdline },  -- populate cmdline (:) with file(s)
 	}
 ```
 
