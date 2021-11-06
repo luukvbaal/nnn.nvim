@@ -135,12 +135,12 @@ end
 
 -- on_exit callback for termopen
 local function on_exit(id, code)
-	local win
-	local tabpage = 1
+	local tabpage, win
 	local mode = state.picker[1] and state.picker[1].id == id and "picker" or "explorer"
 
 	if mode == "picker" then
-		win = state.picker.win
+		tabpage = 1
+		win = state.picker[1].win
 	else
 		for tab, stat in pairs(state.explorer) do
 			if stat.id == id then
@@ -163,11 +163,9 @@ local function on_exit(id, code)
 		end
 
 		if mode == "picker" then
-			local fd, err = io.open(pickertmp, "r")
+			local fd, _ = io.open(pickertmp, "r")
 			if fd then
 				handle_files(io.lines(pickertmp))
-			else
-				print(err)
 			end
 		end
 	end
