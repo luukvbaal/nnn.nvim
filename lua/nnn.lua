@@ -142,10 +142,10 @@ local function on_exit(id, code)
 		tabpage = 1
 		win = state.picker[1].win
 	else
-		for tab, stat in pairs(state.explorer) do
-			if stat.id == id then
+		for tab, nstate in pairs(state.explorer) do
+			if nstate.id == id then
 				tabpage = tab
-				win = stat.win
+				win = nstate.win
 				break
 			end
 		end
@@ -309,7 +309,7 @@ function M.toggle(mode, dir, auto)
 	local win = state[mode][tab] and state[mode][tab].win
 	win = cfg.explorer.tabs and win or vim.tbl_contains(api.nvim_tabpage_list_wins(0), win)
 
-	if win then
+	if win and api.nvim_win_is_valid(win) then
 		close(mode, tab)
 	elseif mode == "explorer" then
 		if nnnver < 4.3 then
