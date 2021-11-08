@@ -4,7 +4,7 @@ File manager for Neovim powered by [nnn](https://github.com/jarun/nnn).
 
 <!-- panvimdoc-ignore-start -->
 
-![img](https://i.imgur.com/mtpBKUl.png)
+![img](https://user-images.githubusercontent.com/31730729/140781823-6810811c-9bd8-4ade-a1fe-5f225cb53c76.png)
 
 <!-- panvimdoc-ignore-end -->
 
@@ -61,7 +61,7 @@ In this mode only the `-p` flag is active. Picker mode implies only a single sel
 
 ### Bindings
 
-Bind `NnnExplorer/NnnPicker` to toggle the plugin on/off in normal and terminal mode. The commands accept a path as optional argument:
+Bind `NnnExplorer/NnnPicker` to toggle the plugin on/off in normal and terminal mode. The commands accept a path as optional argument. To always open nnn in the directory of the currently active buffer, use `%:p:h` as argument:
 
 ```vim
 tnoremap <C-A-n> <cmd>NnnExplorer<CR>
@@ -166,7 +166,7 @@ Alternatively you can set the session `"shared"` to share the same session betwe
 
 <!-- panvimdoc-ignore-start -->
 
-![img](https://i.imgur.com/LLd8Oq5.png)
+![img](https://user-images.githubusercontent.com/31730729/140726345-0d4005e4-0ed3-494f-9c51-bdac19f277f3.png)
 
 <!-- panvimdoc-ignore-end -->
 
@@ -176,6 +176,6 @@ Setting the command override for picker mode to for example `tmux new-session nn
 
 <!-- panvimdoc-ignore-start -->
 
-![img](https://i.imgur.com/OhfK12S.gif)
+![img](https://user-images.githubusercontent.com/31730729/140781363-fc81ccd0-c4f3-4cb8-a771-1c221dee603f.gif)
 
 <!-- panvimdoc-ignore-end -->
