@@ -53,7 +53,8 @@ selection will be made before quitting nnn and thus the floating window.
 BINDINGS ~
 
 Bind `NnnExplorer/NnnPicker` to toggle the plugin on/off in normal and terminal
-mode. The commands accept a path as optional argument:
+mode. The commands accept a path as optional argument. To always open nnn in
+the directory of the currently active buffer, use `%:p:h` as argument:
 
 >
     tnoremap <C-A-n> <cmd>NnnExplorer<CR>
