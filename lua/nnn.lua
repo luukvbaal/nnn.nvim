@@ -361,7 +361,7 @@ end
 
 -- VimResized callback to resize picker window
 function M.vim_resized()
-	local win = state and state.picker and state.picker.win
+	local win = state and state.picker and state.picker[1].win
 	if win then api.nvim_win_set_config(win, get_win_size()) end
 end
 
