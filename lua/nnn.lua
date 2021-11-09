@@ -262,7 +262,7 @@ end
 
 -- Open picker float and set local buffer options and mappings
 local function open_picker()
-	local id
+	local id = state.picker[1] and state.picker[1].id
 	local win, buf, new = create_float()
 
 	if new then
