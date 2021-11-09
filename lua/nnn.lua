@@ -327,7 +327,7 @@ end
 -- Handle user defined mappings
 function M.handle_mapping(key)
 	action = cfg.mappings[tonumber(key)][2]
-	feedkeys("i"..(api.nvim_buf_get_name(0):match("nnnexplorer") and "<CR>" or "q"))
+	feedkeys("i<CR>")
 end
 
 -- WinEnter callback to save target window filtering out nnn windows
