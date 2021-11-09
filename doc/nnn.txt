@@ -39,16 +39,20 @@ In this mode, the plugin makes use of nnn’s `-F` flag to listen for opened
 files. Pressing <kdb>Enter</kbd> on a file will open that file in a new buffer,
 while keeping the nnn window open.
 
-Select <https://github.com/jarun/nnn/wiki/concepts#selection> multiple files
-before pressing <kbd>Enter</kbd> to open multiple files
-simultaneously(excluding the hovered file).
-
 PICKER MODE ~
 
 Run command `:NnnPicker` to open nnn in a floating window.
 
-In this mode only the `-p` flag is active. Picker mode implies only a single
-selection will be made before quitting nnn and thus the floating window.
+In this mode nnn’s `-p` flag is used to listen for opened files on program
+exit. Picker mode implies only a single selection will be made before quitting
+nnn and thus the floating window.
+
+SELECTION ~
+
+In both modes it’s possible to select
+<https://github.com/jarun/nnn/wiki/concepts#selection> multiple files before
+pressing <kbd>Enter</kbd>. Doing so will open the entire selection all at once,
+excluding the hovered file.
 
 BINDINGS ~
 
