@@ -304,7 +304,7 @@ function M.toggle(mode, dir, auto)
 		end
 	end
 
-	startdir = (" %s "):format(dir and fn.fnameescape(fn.expand(dir)) or is_dir and bufname or "")
+	startdir = " "..fn.fnameescape(dir and fn.expand(dir) or is_dir and bufname or fn.getcwd()).." "
 	local tab = mode == "explorer" and cfg.explorer.tabs and api.nvim_get_current_tabpage() or 1
 	local win = state[mode][tab] and state[mode][tab].win
 	win = cfg.explorer.tabs and win or vim.tbl_contains(api.nvim_tabpage_list_wins(0), win)
