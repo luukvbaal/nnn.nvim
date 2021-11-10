@@ -159,13 +159,13 @@ Alternatively you can set the session `"shared"` to share the same session betwe
 
 ### Colors
 
-[Three](Three) highlight groups `NnnNormal`, `NnnNormalNC` and `NnnFloatBorder` are available to configure the colors for the active, inactive and picker window borders respectively.
+Three highlight groups `NnnNormal`, `NnnNormalNC` and `NnnFloatBorder` are available to configure the colors for the active, inactive and picker window borders respectively.
 
 ## Tips and tricks
 
 ### Git status
 
-[Build](https://github.com/jarun/nnn/tree/master/patches#list-of-patches) and install nnn with the [gitstatus](https://github.com/jarun/nnn/blob/master/patches/gitstatus/mainline.diff) patch and add the `-G` flag to your command override to enable git status symbols.
+[Build](https://github.com/jarun/nnn/tree/master/patches#list-of-patches) and install nnn with the [gitstatus](https://github.com/jarun/nnn/blob/master/patches/gitstatus/mainline.diff) enable git status symbols in detail mode. Add the `-G` flag to your command override to also enable symbols in normal mode.
 
 <!-- panvimdoc-ignore-start -->
 
