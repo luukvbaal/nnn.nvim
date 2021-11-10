@@ -164,9 +164,9 @@ the session shared).
 
 COLORS ~
 
-Three <Three> highlight groups `NnnNormal`, `NnnNormalNC` and `NnnFloatBorder`
-are available to configure the colors for the active, inactive and picker
-window borders respectively.
+Three highlight groups `NnnNormal`, `NnnNormalNC` and `NnnFloatBorder` are
+available to configure the colors for the active, inactive and picker window
+borders respectively.
 
 TIPS AND TRICKS                                          *nnn-tips-and-tricks*
 
@@ -175,8 +175,8 @@ GIT STATUS ~
 Build <https://github.com/jarun/nnn/tree/master/patches#list-of-patches> and
 install nnn with the gitstatus
 <https://github.com/jarun/nnn/blob/master/patches/gitstatus/mainline.diff>
-patch and add the `-G` flag to your command override to enable git status
-symbols.
+enable git status symbols in detail mode. Add the `-G` flag to your command
+override to also enable symbols in normal mode.
 
 PREVIEW-TUI ~
 
