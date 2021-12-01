@@ -169,6 +169,9 @@ local function on_exit(id, code)
 			end
 		end
 	end
+	-- Manually trigger events that are not fired in this on_exit callback. Bug in neovim?
+	cmd("doautocmd WinEnter")
+	cmd("doautocmd BufEnter")
 end
 
 -- on_stdout callback for error catching
