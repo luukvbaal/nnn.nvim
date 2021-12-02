@@ -67,10 +67,14 @@ local function close(mode, tab)
 	if #api.nvim_tabpage_list_wins(0) == 1 then
 		api.nvim_win_set_buf(state[mode][tab].win, api.nvim_create_buf(false, false))
 	else
-		api.nvim_win_close(state[mode][tab].win, true)
+		api.nvim_win_hide(state[mode][tab].win)
 	end
 
 	state[mode][tab].win = nil
+	schedule(function()
+		cmd("doautocmd BufEnter")
+		cmd("doautocmd WinEnter")
+	end)
 end
 
 local function handle_files(iter)
@@ -159,7 +163,7 @@ local function on_exit(id, code)
 			if #api.nvim_tabpage_list_wins(0) == 1 then
 				cmd("split")
 			end
-			api.nvim_win_close(win, true)
+			api.nvim_win_hide(win)
 		end
 
 		if mode == "picker" then
