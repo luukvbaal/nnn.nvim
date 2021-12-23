@@ -154,6 +154,7 @@ local function on_exit(id, code)
 			end
 		end
 	end
+	if not tabpage then return end
 	state[mode][tabpage] = {}
 
 	if code > 0 then
