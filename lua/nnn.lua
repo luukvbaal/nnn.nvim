@@ -194,7 +194,7 @@ local function buffer_setup(mode, tab)
 	end
 
 	for i, mapping in ipairs(cfg.mappings) do
-		api.nvim_buf_set_keymap(0, "t", mapping[1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping('"..i.."')<CR>", {})
+		api.nvim_buf_set_keymap(0, "t", mapping[1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping("..i..")<CR>", {})
 	end
 
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.left, "<C-\\><C-n><C-w>h", {})
@@ -354,7 +354,7 @@ end
 
 -- Handle user defined mappings
 function M.handle_mapping(key)
-	action = cfg.mappings[tonumber(key)][2]
+	action = cfg.mappings[key][2]
 	feedkeys("i<CR>")
 end
 
