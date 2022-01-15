@@ -89,10 +89,10 @@ local cfg = {
 	picker = {
 		cmd = "nnn",       -- command override (-p flag is implied)
 		style = {
-			width = 0.9,     -- width in percentage of the viewport
-			height = 0.8,    -- height in percentage of the viewport
-			xoffset = 0.5,   -- xoffset in percentage
-			yoffset = 0.5,   -- yoffset in percentage
+			width = 0.9,     -- percentage relative to terminal size when < 1, absolute otherwise
+			height = 0.8,    -- ^
+			xoffset = 0.5,   -- ^
+			yoffset = 0.5,   -- ^
 			border = "single"-- border decoration for example "rounded"(:h nvim_open_win)
 		},
 		session = "",      -- or "global" / "local" / "shared"
