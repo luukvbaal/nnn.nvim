@@ -71,7 +71,10 @@ local function close(mode, tab)
 	end
 
 	state[mode][tab].win = nil
-	schedule(function() api.nvim_do_autocmd("BufEnter,WinEnter", {}) end)
+	schedule(function()
+		cmd("doautocmd BufEnter")
+		cmd("doautocmd WinEnter")
+	end)
 end
 
 local function handle_files(iter)
@@ -172,7 +175,8 @@ local function on_exit(id, code)
 		end
 	end
 	-- Manually trigger events that are not fired in this on_exit callback. Bug in neovim?
-	schedule(function() api.nvim_do_autocmd("BufEnter,WinEnter", {}) end)
+	cmd("doautocmd WinEnter")
+	cmd("doautocmd BufEnter")
 end
 
 -- on_stdout callback for error catching
@@ -460,9 +464,7 @@ function M.setup(setup_cfg)
 
 		schedule(function()
 			M.toggle(cfg.replace_netrw, nil, "netrw")
-			api.nvim_create_autocmd("BufEnter,BufNewFile", { callback = function()
-				require("nnn").toggle(cfg.replace_netrw, nil, "netrw")
-			end})
+			cmd("autocmd BufEnter,BufNewFile * lua require('nnn').toggle('"..cfg.replace_netrw.."', nil, 'netrw')")
 		end)
 	end
 
@@ -480,13 +482,13 @@ function M.setup(setup_cfg)
 	if cfg.picker.session == "shared" or cfg.explorer.session == "shared" then
 		pickersession = " -S -s "..sessionfile
 		explorersession = pickersession
-		api.nvim_create_autocmd("VimLeavePre", { command = "call delete(fnameescape('"..sessionfile.."'))" })
+		cmd("autocmd VimLeavePre * call delete(fnameescape('"..sessionfile.."'))")
 	else
 		if cfg.picker.session == "global" then
 			pickersession = " -S "
 		elseif cfg.picker.session == "local" then
 			pickersession = " -S -s "..sessionfile.."-picker "
-		api.nvim_create_autocmd("VimLeavePre", { command = "call delete(fnameescape('"..sessionfile.."-picker'))" })
+			cmd("autocmd VimLeavePre * call delete(fnameescape('"..sessionfile.."-picker'))")
 		else
 			pickersession = " "
 		end
@@ -495,7 +497,7 @@ function M.setup(setup_cfg)
 			explorersession = " -S "
 		elseif cfg.explorer.session == "local" then
 			explorersession = " -S -s "..sessionfile.."-explorer "
-		api.nvim_create_autocmd("VimLeavePre", { command = "call delete(fnameescape('"..sessionfile.."-explorer'))" })
+			cmd("autocmd VimLeavePre * call delete(fnameescape('"..sessionfile.."-explorer'))")
 		else
 			explorersession = " "
 		end
@@ -514,50 +516,28 @@ function M.setup(setup_cfg)
 	end
 
 	if cfg.auto_close then
-		api.nvim_create_autocmd("WinClosed", { callback = function()
-			require("nnn").win_closed()
-		end})
+		cmd("autocmd WinClosed * lua require('nnn').win_closed()")
 	end
 
 	if cfg.auto_open.tabpage then
-		api.nvim_create_autocmd("TabNewEntered", { callback = function()
-			vim.schedule(function() require("nnn").toggle(cfg.auto_open.tabpage, nil, "tab") end)
-		end})
+		cmd("autocmd TabNewEntered * lua vim.schedule(function()require('nnn').toggle('"..cfg.auto_open.tabpage.."',nil,'tab')end)")
 	end
 
-	api.nvim_add_user_command("NnnPicker", function(opts)
-		require("nnn").toggle("picker", opts.args)
-	end, { nargs = "*" })
-	api.nvim_add_user_command("NnnExplorer", function(opts)
-		require("nnn").toggle("explorer", opts.args)
-	end, { nargs = "*" })
-
-	local group = api.nvim_create_augroup("nnn", { clear = true })
-	api.nvim_create_autocmd("TabNewEntered", { group = group, callback = function()
-		require("nnn").win_enter()
-	end})
-	api.nvim_create_autocmd("TermClose", { group = group, callback = function()
-		if api.nvim_buf_get_option(0, "filetype") == "nnn" then
-			api.nvim_buf_delete(0, { force = true })
-		end
-	end})
-	api.nvim_create_autocmd("BufEnter", { group = group, callback = function()
-		if api.nvim_buf_get_option(0, "filetype") == "nnn" then
-			vim.cmd("startinsert")
-		end
-	end})
-	api.nvim_create_autocmd("VimResized", { group = group, callback = function()
-		if api.nvim_buf_get_option(0, "filetype") == "nnn" then
-			require("nnn").vim_resized()
-		end
-	end})
-	api.nvim_create_autocmd("TabClosed", { group = group, callback = function()
-		require("nnn").tab_closed(tonumber(vim.fn.expand("<afile>")))
-	end})
-
-	api.nvim_set_hl(0, "NnnBorder", { link = "FloatBorder", default = true })
-	api.nvim_set_hl(0, "NnnNormal", { link = "Normal", default = true })
-	api.nvim_set_hl(0, "NnnNormalNC", { link = "Normal", default = true })
+	cmd [[
+		command! -nargs=? NnnPicker lua require("nnn").toggle("picker", <q-args>)
+		command! -nargs=? NnnExplorer lua require("nnn").toggle("explorer", <q-args>)
+		augroup nnn
+			autocmd!
+			autocmd WinEnter * :lua require("nnn").win_enter()
+			autocmd TermClose * if &ft ==# "nnn" | :bdelete! | endif
+			autocmd BufEnter * if &ft ==# "nnn" | startinsert | endif
+			autocmd VimResized * if &ft ==# "nnn" | execute 'lua require("nnn").vim_resized()' | endif
+			autocmd TabClosed * :lua require("nnn").tab_closed(tonumber(vim.fn.expand("<afile>")))
+		augroup end
+		highlight default link NnnBorder FloatBorder
+		highlight default link NnnNormal Normal
+		highlight default link NnnNormalNC Normal
+	]]
 end
 
 return M
