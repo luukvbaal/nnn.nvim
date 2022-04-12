@@ -159,7 +159,7 @@ Alternatively you can set the session `"shared"` to share the same session betwe
 
 ### Colors
 
-Three highlight groups `NnnNormal`, `NnnNormalNC` and `NnnFloatBorder` are available to configure the colors for the active, inactive and picker window borders respectively.
+Three highlight groups `NnnNormal`, `NnnNormalNC` and `NnnBorder` are available to configure the colors for the active, inactive and picker window borders respectively.
 
 ## Tips and tricks
 
