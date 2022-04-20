@@ -525,10 +525,10 @@ function M.setup(setup_cfg)
 		end})
 	end
 
-	api.nvim_add_user_command("NnnPicker", function(opts)
+	api.nvim_create_user_command("NnnPicker", function(opts)
 		require("nnn").toggle("picker", opts.args)
 	end, { nargs = "*" })
-	api.nvim_add_user_command("NnnExplorer", function(opts)
+	api.nvim_create_user_command("NnnExplorer", function(opts)
 		require("nnn").toggle("explorer", opts.args)
 	end, { nargs = "*" })
 
