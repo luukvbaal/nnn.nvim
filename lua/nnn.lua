@@ -71,7 +71,7 @@ local function close(mode, tab)
 	end
 
 	state[mode][tab].win = nil
-	schedule(function() api.nvim_exec_autocmd({ "BufEnter", "WinEnter" }, {}) end)
+	schedule(function() api.nvim_exec_autocmds({ "BufEnter", "WinEnter" }, {}) end)
 end
 
 local function handle_files(iter)
@@ -172,7 +172,7 @@ local function on_exit(id, code)
 		end
 	end
 	-- Manually trigger events that are not fired in this on_exit callback. Bug in neovim?
-	schedule(function() api.nvim_exec_autocmd({ "BufEnter", "WinEnter" }, {}) end)
+	schedule(function() api.nvim_exec_autocmds({ "BufEnter", "WinEnter" }, {}) end)
 end
 
 -- on_stdout callback for error catching
