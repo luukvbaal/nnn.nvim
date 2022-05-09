@@ -7,7 +7,7 @@ local min = math.min
 local max = math.max
 local floor = math.floor
 -- forward declarations
-local nnnver, action, stdout, startdir, oppside
+local nnnver, action, stdout, startdir, oppside, bufopts
 local targetwin = { win = api.nvim_get_current_win(), buf = api.nvim_get_current_buf() }
 local state = { explorer = {}, picker = {} }
 local M = { builtin = {} }
@@ -41,6 +41,7 @@ local cfg = {
 	replace_netrw = nil,
 	mappings = {},
 	windownav = { left = "<C-w>h", right = "<C-w>l" },
+	buflisted = false,
 }
 
 local winopts = {
@@ -50,11 +51,6 @@ local winopts = {
 	winfixwidth = true,
 	winfixheight = true,
 	winhighlight = "Normal:NnnNormal,NormalNC:NnnNormalNC,FloatBorder:NnnBorder",
-}
-
-local bufopts = {
-	buftype = "terminal",
-	filetype = "nnn",
 }
 
 -- Close nnn window(keeping buffer) and create new buffer if none left
@@ -450,6 +446,12 @@ function M.setup(setup_cfg)
 	if setup_cfg then
 		cfg = vim.tbl_deep_extend("force", cfg, setup_cfg)
 	end
+
+	bufopts = {
+		buftype = "terminal",
+		filetype = "nnn",
+		buflisted = cfg.buflisted
+	}
 
 	-- Replace netrw plugin if config is set
 	if cfg.replace_netrw then
