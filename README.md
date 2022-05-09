@@ -112,6 +112,7 @@ local cfg = {
 		left = "<C-w>h",
 		right = "<C-w>l"
 	},
+	buflisted = false     -- wether or not nnn buffers show up in the bufferlist
 }
 ```
 
