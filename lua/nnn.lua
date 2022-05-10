@@ -98,7 +98,7 @@ local function handle_files(iter)
 		if action then
 			files[#files + 1] = fn.fnameescape(file)
 		else
-			cmd("edit "..fn.fnameescape(file))
+			pcall(cmd, "edit "..fn.fnameescape(file))
 		end
 	end
 
