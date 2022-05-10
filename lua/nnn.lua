@@ -40,7 +40,7 @@ local cfg = {
 	auto_close = false,
 	replace_netrw = nil,
 	mappings = {},
-	windownav = { left = "<C-w>h", right = "<C-w>l" },
+	windownav = { left = "<C-w>h", right = "<C-w>l", next = "<C-w>w", prev = "<C-w>W" },
 	buflisted = false,
 }
 
@@ -192,6 +192,8 @@ local function buffer_setup(mode, tab)
 
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.left, "<C-\\><C-n><C-w>h", {})
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.right, "<C-\\><C-n><C-w>l", {})
+	api.nvim_buf_set_keymap(0, "t", cfg.windownav.next, "<C-\\><C-n><C-w>w", {})
+	api.nvim_buf_set_keymap(0, "t", cfg.windownav.prev, "<C-\\><C-n><C-w>W", {})
 	api.nvim_buf_set_name(0, "nnn"..mode..tab)
 end
 

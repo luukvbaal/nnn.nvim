@@ -110,9 +110,11 @@ local cfg = {
 	mappings = {},       -- table containing mappings, see below
 	windownav = {        -- window movement mappings to navigate out of nnn
 		left = "<C-w>h",
-		right = "<C-w>l"
+		right = "<C-w>l",
+		next = "<C-w>w",
+		prev = "<C-w>W",
 	},
-	buflisted = false     -- wether or not nnn buffers show up in the bufferlist
+	buflisted = false,   -- wether or not nnn buffers show up in the bufferlist
 }
 ```
 
@@ -126,7 +128,7 @@ require("nnn").setup({
 		session = "shared",
 	},
 	replace_netrw = "picker",
-	window_nav = "<C-l>"
+	windownav = "<C-l>"
 })
 ```
 
