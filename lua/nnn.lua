@@ -428,7 +428,8 @@ function M.builtin.copy_to_clipboard(files)
 end
 
 function M.builtin.cd_to_path(files)
-	local dir = files[1]:match(".*/")
+	local dir_escaped = files[1]:match(".*/")
+	local dir = dir_escaped:gsub("\\", "")
 	local read = io.open(dir, "r")
 
 	if read ~= nil then
