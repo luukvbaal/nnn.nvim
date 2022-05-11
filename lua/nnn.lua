@@ -74,8 +74,10 @@ end
 local function handle_files(iter)
 	local files = {}
 	local empty, notnnn
-
-	if not targetwin.win then -- find window containing empty or non-nnn buffer
+	local _, targetwintab = pcall(api.nvim_win_get_tabpage, targetwin.win)
+	 -- find window containing empty or non-nnn buffer
+	if not targetwin.win or targetwintab ~= api.nvim_get_current_tabpage() then
+		targetwin.win = nil
 		for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
 			if api.nvim_buf_get_name(api.nvim_win_get_buf(win)) == "" then
 				empty = win
@@ -89,6 +91,7 @@ local function handle_files(iter)
 
 		if not empty and not notnnn then -- create new win
 			cmd(oppside..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
+			targetwin.win = api.nvim_get_current_win()
 		end
 	end
 
