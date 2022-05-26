@@ -90,7 +90,7 @@ local function handle_files(iter)
 		end
 
 		if not empty and not notnnn then -- create new win
-			cmd(oppside..api.nvim_get_option("columns") - cfg.explorer.width.."vsplit")
+			cmd(oppside..api.nvim_get_option("columns") - cfg.explorer.width - 1 .."vsplit")
 			targetwin.win = api.nvim_get_current_win()
 		end
 	end
