@@ -15,6 +15,8 @@ local M = { builtin = {} }
 local pickertmp = fn.tempname().."-picker"
 local explorertmp = fn.tempname().."-explorer"
 local nnnopts = os.getenv("NNN_OPTS")
+local nnntmpfile = os.getenv("NNN_TMPFILE") or
+		(os.getenv("XDG_CONFIG_HOME") or os.getenv("HOME").."/.config").."/nnn/.lastd"
 local term = os.getenv("TERM")
 local exploreropts = nnnopts and nnnopts:gsub("a", "") or ""
 
@@ -42,6 +44,7 @@ local cfg = {
 	mappings = {},
 	windownav = { left = "<C-w>h", right = "<C-w>l", next = "<C-w>w", prev = "<C-w>W" },
 	buflisted = false,
+	quitcd = "tcd",
 }
 
 local winopts = {
@@ -157,6 +160,14 @@ local function on_exit(id, code)
 	if code > 0 then
 		schedule(function() print(stdout and stdout[1]:sub(1, -2)) end)
 	else
+		local fd, _ = io.open(nnntmpfile, "r")
+		if fd then
+			local dir = fd:read():sub(5, -2)
+			cmd(cfg.quitcd..fn.fnameescape(dir))
+			fd:close()
+			os.remove(nnntmpfile)
+		end
+
 		if api.nvim_win_is_valid(win) then
 			if #api.nvim_tabpage_list_wins(0) == 1 then
 				cmd("split")
@@ -165,7 +176,7 @@ local function on_exit(id, code)
 		end
 
 		if mode == "picker" then
-			local fd, _ = io.open(pickertmp, "r")
+			fd, _ = io.open(pickertmp, "r")
 			if fd then
 				handle_files(io.lines(pickertmp))
 			end
@@ -464,9 +475,9 @@ function M.setup(setup_cfg)
 		vim.g.loaded_netrwPlugin = 1
 		vim.g.loaded_netrwSettings = 1
 		vim.g.loaded_netrwFileHandlers = 1
-		cmd("silent! autocmd! FileExplorer *")
 
 		schedule(function()
+		pcall(api.nvim_clear_autocmds, { group = "FileExplorer" })
 			M.toggle(cfg.replace_netrw, nil, "netrw")
 			api.nvim_create_autocmd({ "BufEnter", "BufNewFile" }, { callback = function()
 				require("nnn").toggle(cfg.replace_netrw, nil, "netrw")

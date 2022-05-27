@@ -115,6 +115,7 @@ local cfg = {
 		prev = "<C-w>W",
 	},
 	buflisted = false,   -- wether or not nnn buffers show up in the bufferlist
+	quitcd = "tcd",      -- or "cd" / "lcd", command to run if quitcd file is found
 }
 ```
 
