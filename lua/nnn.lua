@@ -267,13 +267,13 @@ local function get_win_size()
 	local vim_height = api.nvim_get_option("lines")
 	local vim_width = api.nvim_get_option("columns")
 
-	wincfg.height = min(max(0, floor(style.height > 1 and style.height or (vim_height * style.height))), vim_height)
-	wincfg.width = min(max(0, floor(style.width > 1 and style.width or (vim_width * style.width))), vim_width)
+	wincfg.height = min(max(0, floor(style.height > 1 and style.height or (vim_height * style.height))), vim_height) - 1
+	wincfg.width = min(max(0, floor(style.width > 1 and style.width or (vim_width * style.width))), vim_width) - 1
 
-	local row = floor(style.yoffset > 1 and style.yoffset or (style.yoffset * (vim_height - wincfg.height)))
-	local col = floor(style.xoffset > 1 and style.xoffset or (style.xoffset * (vim_width - wincfg.width)))
+	local row = floor(style.yoffset > 1 and style.yoffset or (style.yoffset * (vim_height - wincfg.height))) - 1
+	local col = floor(style.xoffset > 1 and style.xoffset or (style.xoffset * (vim_width - wincfg.width))) - 1
 
-	wincfg.row = min(max(0, row), vim_height - wincfg.height) - 1
+	wincfg.row = min(max(0, row), vim_height - wincfg.height)
 	wincfg.col = min(max(0, col), vim_width - wincfg.width)
 
 	return wincfg
