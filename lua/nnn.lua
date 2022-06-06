@@ -472,9 +472,9 @@ function M.setup(setup_cfg)
 		vim.g.loaded_netrwPlugin = 1
 		vim.g.loaded_netrwSettings = 1
 		vim.g.loaded_netrwFileHandlers = 1
+		pcall(api.nvim_clear_autocmds, { group = "FileExplorer" })
 
 		schedule(function()
-		pcall(api.nvim_clear_autocmds, { group = "FileExplorer" })
 			M.toggle(cfg.replace_netrw, nil, "netrw")
 			api.nvim_create_autocmd({ "BufEnter", "BufNewFile" }, { callback = function()
 				require("nnn").toggle(cfg.replace_netrw, nil, "netrw")
