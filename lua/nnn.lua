@@ -137,6 +137,11 @@ local function read_fifo()
 	end)
 end
 
+local function stat(name, type)
+       local stats = uv.fs_stat(name)
+       return stats and stats.type == type
+end
+
 -- on_exit callback for termopen
 local function on_exit(id, code)
 	local tabpage, win
@@ -175,11 +180,8 @@ local function on_exit(id, code)
 			api.nvim_win_hide(win)
 		end
 
-		if mode == "picker" then
-			fd, _ = io.open(pickertmp, "r")
-			if fd then
-				handle_files(io.lines(pickertmp))
-			end
+		if mode == "picker" and stat(pickertmp, "file") then
+			handle_files(io.lines(pickertmp))
 		end
 	end
 	-- restore last known active window
@@ -323,11 +325,6 @@ local function open_picker(is_dir)
 	if is_dir then
 		restore_buffer(curwin, buf)
 	end
-end
-
-local function stat(name, type)
-	local stats = uv.fs_stat(name)
-	return stats and stats.type == type
 end
 
 -- Toggle explorer/picker windows, keeping buffers
