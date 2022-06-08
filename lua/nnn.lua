@@ -206,6 +206,7 @@ local function buffer_setup(mode, tab)
 		api.nvim_buf_set_keymap(0, "t", mapping[1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping("..i..")<CR>", {})
 	end
 
+	api.nvim_buf_set_keymap(0, "t", "e", "", {})
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.left, "<C-\\><C-n><C-w>h", {})
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.right, "<C-\\><C-n><C-w>l", {})
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.next, "<C-\\><C-n><C-w>w", {})
