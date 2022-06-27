@@ -194,7 +194,7 @@ local function on_stdout(_, data, _)
 end
 
 local function feedkeys(keys)
-	api.nvim_feedkeys(api.nvim_replace_termcodes(keys, true, true, true), "m", true)
+	api.nvim_feedkeys(api.nvim_replace_termcodes(keys, true, true, true), "n", true)
 end
 
 local function buffer_setup(mode, tab)
