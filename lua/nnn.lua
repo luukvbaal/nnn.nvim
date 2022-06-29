@@ -577,8 +577,8 @@ function M.setup(setup_cfg)
 			require("nnn").vim_resized()
 		end
 	end})
-	api.nvim_create_autocmd("TabClosed", { group = group, callback = function()
-		require("nnn").tab_closed(tonumber(vim.fn.expand("<afile>")))
+	api.nvim_create_autocmd("TabClosed", { group = group, callback = function(args)
+		require("nnn").tab_closed(tonumber(args.file))
 	end})
 
 	api.nvim_set_hl(0, "NnnBorder", { link = "FloatBorder", default = true })
