@@ -360,9 +360,9 @@ function M.toggle(mode, dir, auto)
 	if win and api.nvim_win_is_valid(win) then
 		close(mode, tab)
 	elseif mode == "explorer" then
-		if nnnver < 4.3 then
+		if not nnnver or nnnver < 4.3 then
 			print("NnnExplorer requires nnn version >= v4.3. Currently installed: "..
-					((nnnver ~= 0) and ("v"..nnnver) or "none"))
+					(nnnver and ("v"..nnnver) or "none"))
 			return
 		end
 
@@ -494,7 +494,7 @@ function M.setup(setup_cfg)
 
 	-- Version check for explorer mode
 	local verfd = io.popen("nnn -V")
-	nnnver = tonumber(verfd:read()) or 0
+	nnnver = verfd and tonumber(verfd:read())
 	verfd:close()
 
 	-- Setup sessionfile name and remove on exit
