@@ -17,6 +17,7 @@ local explorertmp = fn.tempname().."-explorer"
 local nnnopts = os.getenv("NNN_OPTS")
 local nnntmpfile = os.getenv("NNN_TMPFILE") or
 		(os.getenv("XDG_CONFIG_HOME") or os.getenv("HOME").."/.config").."/nnn/.lastd"
+local tmpdir = os.getenv("TMPDIR") or "/tmp"
 local term = os.getenv("TERM")
 local exploreropts = nnnopts and nnnopts:gsub("a", "") or ""
 
@@ -45,6 +46,7 @@ local cfg = {
 	windownav = { left = "<C-w>h", right = "<C-w>l", next = "<C-w>w", prev = "<C-w>W" },
 	buflisted = false,
 	quitcd = "tcd",
+	offset = false,
 }
 
 local winopts = {
@@ -277,6 +279,14 @@ local function get_win_size()
 
 	wincfg.row = min(max(0, row), vim_height - wincfg.height)
 	wincfg.col = min(max(0, col), vim_width - wincfg.width)
+
+	if cfg.offset then
+		local file = io.open(tmpdir.."/nnn-preview-tui-posoffset", "w")
+		if file then
+			file:write((wincfg.col + 1).." "..(wincfg.row + 1).."\n")
+			file:close()
+		end
+	end
 
 	return wincfg
 end

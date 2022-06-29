@@ -114,8 +114,9 @@ local cfg = {
 		next = "<C-w>w",
 		prev = "<C-w>W",
 	},
-	buflisted = false,   -- wether or not nnn buffers show up in the bufferlist
+	buflisted = false,   -- whether or not nnn buffers show up in the bufferlist
 	quitcd = "tcd",      -- or "cd" / "lcd", command to run if quitcd file is found
+	offset = false,      -- whether or not to write position offset to tmpfile(for use in preview-tui)
 }
 ```
 
@@ -186,3 +187,4 @@ Setting the command override for picker mode to for example `tmux new-session nn
 ![img](https://user-images.githubusercontent.com/31730729/140781363-fc81ccd0-c4f3-4cb8-a771-1c221dee603f.gif)
 
 <!-- panvimdoc-ignore-end -->
+Include option `offset = true` in your config to write the offset of the `NnnPicker` window to a temporary file. This will allow `preview-tui` to correctly draw ueberzug image previews, accounting for said offset.
