@@ -81,7 +81,8 @@ local function handle_files(iter)
 	local empty, notnnn
 	local _, targetwintab = pcall(api.nvim_win_get_tabpage, targetwin.win)
 	 -- find window containing empty or non-nnn buffer
-	if not targetwin.win or targetwintab ~= api.nvim_get_current_tabpage() then
+	if not targetwin.win or targetwintab ~= api.nvim_get_current_tabpage()
+			or api.nvim_buf_get_option(targetwin.buf, "filetype") == "nnn" then
 		targetwin.win = nil
 		for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
 			if api.nvim_buf_get_name(api.nvim_win_get_buf(win)) == "" then
@@ -199,7 +200,7 @@ local function feedkeys(keys)
 	api.nvim_feedkeys(api.nvim_replace_termcodes(keys, true, true, true), "n", true)
 end
 
-local function buffer_setup(mode, tab)
+local function buffer_setup()
 	for opt, val in pairs(bufopts) do
 		api.nvim_buf_set_option(0, opt, val)
 	end
@@ -212,7 +213,6 @@ local function buffer_setup(mode, tab)
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.right, "<C-\\><C-n><C-w>l", {})
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.next, "<C-\\><C-n><C-w>w", {})
 	api.nvim_buf_set_keymap(0, "t", cfg.windownav.prev, "<C-\\><C-n><C-w>W", {})
-	api.nvim_buf_set_name(0, "nnn"..mode..tab)
 end
 
 local function window_setup()
@@ -230,16 +230,19 @@ local function restore_buffer(win, buf)
 end
 
 -- Open explorer split and set local buffer options and mappings
-local function open_explorer(tab, is_dir)
+local function open_explorer(tab, is_dir, empty)
 	local id = state.explorer[tab] and state.explorer[tab].id
 	local buf = state.explorer[tab] and state.explorer[tab].buf
 	local curwin = api.nvim_get_current_win()
+	local singlewin = #api.nvim_tabpage_list_wins(0) == 1
 
 	if not buf then
-		if is_dir then
-			cmd(cfg.explorer.side.." "..cfg.explorer.width.."vsplit")
-		else
-			cmd(cfg.explorer.side.." "..cfg.explorer.width.."vnew")
+		if not empty then
+			if is_dir and not singlewin then
+				cmd(cfg.explorer.side.." "..cfg.explorer.width.."vsplit")
+			elseif not is_dir then
+				cmd(cfg.explorer.side.." "..cfg.explorer.width.."vnew")
+			end
 		end
 
 		id = fn.termopen(cfg.explorer.cmd..startdir, {
@@ -250,16 +253,16 @@ local function open_explorer(tab, is_dir)
 		})
 
 		buf = api.nvim_get_current_buf()
-		buffer_setup("explorer", tab)
+		buffer_setup()
 		read_fifo()
 	else
-		cmd(cfg.explorer.side.." "..cfg.explorer.width.."vsplit+"..buf.."buffer")
+		cmd((empty and "" or (cfg.explorer.side.." "..cfg.explorer.width.."vsplit+"))..buf.."buffer")
 	end
 
 	window_setup()
 	state.explorer[tab] = { win = api.nvim_get_current_win(), buf = buf, id = id }
 
-	if is_dir then
+	if is_dir and not empty and not singlewin then
 		restore_buffer(curwin, buf)
 	end
 end
@@ -324,7 +327,7 @@ local function open_picker(is_dir)
 			stdout_buffered = true
 		})
 
-		buffer_setup("picker", 1)
+		buffer_setup()
 	else
 		api.nvim_win_set_buf(win, buf)
 	end
@@ -340,6 +343,7 @@ end
 -- Toggle explorer/picker windows, keeping buffers
 function M.toggle(mode, dir, auto)
 	local bufname = api.nvim_buf_get_name(0)
+	local empty = bufname == ""
 	local is_dir = stat(bufname, "directory")
 	local tab = mode == "explorer" and cfg.explorer.tabs and api.nvim_get_current_tabpage() or 1
 
@@ -349,8 +353,8 @@ function M.toggle(mode, dir, auto)
 			api.nvim_buf_delete(state[mode][tab].buf, { force = true })
 			state[mode][tab] = {}
 		end
-	elseif (auto == "setup" or auto == "tab") and (cfg.auto_open.empty and (bufname ~= "" and not is_dir) or
-				vim.tbl_contains(cfg.auto_open.ft_ignore, api.nvim_buf_get_option(0, "filetype"))) then return
+	elseif (auto == "setup" or auto == "tab") and (cfg.auto_open.empty and (not empty and not is_dir) or
+			vim.tbl_contains(cfg.auto_open.ft_ignore, api.nvim_buf_get_option(0, "filetype"))) then return
 	end
 
 	startdir = " "..fn.fnameescape(dir and fn.expand(dir) or is_dir and bufname or fn.getcwd()).." "
@@ -366,7 +370,7 @@ function M.toggle(mode, dir, auto)
 			return
 		end
 
-		open_explorer(tab, is_dir)
+		open_explorer(tab, is_dir, empty)
 	elseif mode == "picker" then
 		open_picker(is_dir)
 	end
