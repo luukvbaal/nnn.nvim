@@ -82,7 +82,8 @@ local function handle_files(iter)
 	local _, targetwintab = pcall(api.nvim_win_get_tabpage, targetwin.win)
 	 -- find window containing empty or non-nnn buffer
 	if not targetwin.win or targetwintab ~= api.nvim_get_current_tabpage()
-			or api.nvim_buf_get_option(targetwin.buf, "filetype") == "nnn" then
+			or api.nvim_buf_get_option(targetwin.buf, "filetype") == "nnn"
+			or api.nvim_get_current_win() == targetwin.win then
 		targetwin.win = nil
 		for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
 			if api.nvim_buf_get_name(api.nvim_win_get_buf(win)) == "" then
@@ -395,7 +396,8 @@ function M.win_enter()
 end
 
 -- WinClosed callback for auto_close to close tabpage or quit vim
-function M.win_closed()
+function M.win_closed(win)
+	if api.nvim_win_get_config(win).zindex then return end
 	schedule(function()
 		if api.nvim_buf_get_option(0, "filetype") ~= "nnn" then return end
 		if #api.nvim_tabpage_list_wins(0) == 1 then
@@ -544,8 +546,8 @@ function M.setup(setup_cfg)
 	end
 
 	if cfg.auto_close then
-		api.nvim_create_autocmd("WinClosed", { callback = function()
-			require("nnn").win_closed()
+		api.nvim_create_autocmd("WinClosed", { callback = function(args)
+			require("nnn").win_closed(tonumber(args.match))
 		end})
 	end
 
