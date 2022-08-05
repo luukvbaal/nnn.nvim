@@ -73,7 +73,7 @@ local function close(mode, tab)
 
 	state[mode][tab].win = nil
 	-- restore last known active window
-	if targetwin then api.nvim_set_current_win(targetwin.win) end
+	if targetwin.win then api.nvim_set_current_win(targetwin.win) end
 end
 
 local function handle_files(iter)
@@ -83,8 +83,7 @@ local function handle_files(iter)
 	 -- find window containing empty or non-nnn buffer
 	if not targetwin.win or targetwintab ~= api.nvim_get_current_tabpage()
 			or (api.nvim_buf_is_valid(targetwin.buf) and
-			api.nvim_buf_get_option(targetwin.buf, "filetype") == "nnn")
-			or api.nvim_get_current_win() == targetwin.win then
+			api.nvim_buf_get_option(targetwin.buf, "filetype") == "nnn") then
 		targetwin.win = nil
 		for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
 			if api.nvim_buf_get_name(api.nvim_win_get_buf(win)) == "" then
