@@ -396,6 +396,20 @@ function M.win_enter()
 	end)
 end
 
+-- WinNew callback to ensure explorer mode has the configured layout
+function M.win_new()
+	schedule(function()
+		local tab = cfg.explorer.tabs and api.nvim_get_current_tabpage() or 1
+		local win = state.explorer[tab].win
+		if win then
+			api.nvim_win_call(win, function()
+				cmd("wincmd "..(cfg.explorer.side:match("to.*") and "H" or "L"))
+			end)
+			api.nvim_win_set_width(win, cfg.explorer.width)
+		end
+	end)
+end
+
 -- WinClosed callback for auto_close to close tabpage or quit vim
 function M.win_closed(win)
 	if api.nvim_win_get_config(win).zindex then return end
@@ -501,8 +515,10 @@ function M.setup(setup_cfg)
 
 	-- Version check for explorer mode
 	local verfd = io.popen("nnn -V")
-	nnnver = verfd and tonumber(verfd:read())
-	verfd:close()
+	if verfd then
+		nnnver = tonumber(verfd:read())
+		verfd:close()
+	end
 
 	-- Setup sessionfile name and remove on exit
 	local pickersession, explorersession
@@ -568,6 +584,9 @@ function M.setup(setup_cfg)
 	local group = api.nvim_create_augroup("nnn", { clear = true })
 	api.nvim_create_autocmd("WinEnter", { group = group, callback = function()
 		require("nnn").win_enter()
+	end})
+	api.nvim_create_autocmd("WinNew", { group = group, callback = function()
+		require("nnn").win_new()
 	end})
 	api.nvim_create_autocmd("TermClose", { group = group, callback = function()
 		if api.nvim_buf_get_option(0, "filetype") == "nnn" then
