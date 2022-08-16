@@ -400,7 +400,7 @@ end
 function M.win_new()
 	schedule(function()
 		local tab = cfg.explorer.tabs and api.nvim_get_current_tabpage() or 1
-		local win = state.explorer[tab].win
+		local win = state.explorer[tab] and state.explorer[tab].win
 		if win then
 			api.nvim_win_call(win, function()
 				cmd("wincmd "..(cfg.explorer.side:match("to.*") and "H" or "L"))
