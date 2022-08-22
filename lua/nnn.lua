@@ -317,9 +317,21 @@ end
 
 -- Open picker float and set local buffer options and mappings
 local function open_picker(is_dir)
+	local win, buf, new
 	local id = state.picker[1] and state.picker[1].id
 	local curwin = api.nvim_get_current_win()
-	local win, buf, new = create_float(is_dir)
+	local fullscreen = is_dir and (#api.nvim_tabpage_list_wins(0) == 1)
+
+	if fullscreen then
+		win = curwin
+		if state.picker[1] and state.picker[1].buf then
+			new, buf = false, state.picker[1].buf
+		else
+			new, buf = true, api.nvim_get_current_buf()
+		end
+	else
+		win, buf, new = create_float(is_dir)
+	end
 
 	if new then
 		id = fn.termopen(cfg.picker.cmd..startdir, {
@@ -337,7 +349,7 @@ local function open_picker(is_dir)
 	window_setup()
 	state.picker[1] = { win = win, buf = buf, id = id }
 
-	if is_dir then
+	if is_dir and not fullscreen then
 		restore_buffer(curwin, buf)
 	end
 end
