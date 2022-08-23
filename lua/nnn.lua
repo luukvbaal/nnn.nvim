@@ -143,29 +143,28 @@ local function read_fifo()
 end
 
 local function stat(name, type)
-       local stats = uv.fs_stat(name)
-       return stats and stats.type == type
+  local stats = uv.fs_stat(name)
+  return stats and stats.type == type
 end
 
 -- on_exit callback for termopen
 local function on_exit(id, code)
-	local tabpage, win
+	local tab, win
 	local mode = state.picker[1] and state.picker[1].id == id and "picker" or "explorer"
 
 	if mode == "picker" then
-		tabpage = 1
+		tab = 1
 		win = state.picker[1].win
 	else
-		for tab, nstate in pairs(state.explorer) do
+		for tabpage, nstate in pairs(state.explorer) do
 			if nstate.id == id then
-				tabpage = tab
+				tab = tabpage
 				win = nstate.win
 				break
 			end
 		end
 	end
-	if not tabpage then return end
-	state[mode][tabpage] = {}
+	if not tab then return end
 
 	if code > 0 then
 		schedule(function() print(stdout and stdout[1]:sub(1, -2)) end)
@@ -179,16 +178,23 @@ local function on_exit(id, code)
 		end
 
 		if api.nvim_win_is_valid(win) then
-			if #api.nvim_tabpage_list_wins(0) == 1 then
-				cmd("split")
+			if targetwin.win == win then
+				for opt, val in pairs(state[mode][tab].winopts) do
+					api.nvim_win_set_option(0, opt, val)
+				end
+			else
+				if #api.nvim_tabpage_list_wins(0) == 1 then
+					cmd("split")
+				end
+				api.nvim_win_hide(win)
 			end
-			api.nvim_win_hide(win)
 		end
 
 		if mode == "picker" and stat(pickertmp, "file") then
 			handle_files(io.lines(pickertmp))
 		end
 	end
+	state[mode][tab] = {}
 	-- restore last known active window
 	if targetwin.win then api.nvim_set_current_win(targetwin.win) end
 end
@@ -316,25 +322,30 @@ local function create_float(is_dir)
 end
 
 -- Open picker float and set local buffer options and mappings
-local function open_picker(is_dir)
-	local win, buf, new
+local function open_picker(is_dir, empty)
+	local new, win
 	local id = state.picker[1] and state.picker[1].id
+	local buf = state.picker[1] and state.picker[1].buf
+	local wo = state.picker[1] and state.picker[1].winopts or {}
 	local curwin = api.nvim_get_current_win()
-	local fullscreen = is_dir and (#api.nvim_tabpage_list_wins(0) == 1)
+	local fullscreen = (is_dir or empty) and (#api.nvim_tabpage_list_wins(0) == 1)
 
 	if fullscreen then
 		win = curwin
-		if state.picker[1] and state.picker[1].buf then
-			new, buf = false, state.picker[1].buf
-		else
-			new, buf = true, api.nvim_get_current_buf()
+		new = not (state.picker[1] and state.picker[1].buf)
+		buf = state.picker[1] and state.picker[1].buf or api.nvim_get_current_buf()
+		if new then
+			for opt, _ in pairs(winopts) do
+				wo[opt] = api.nvim_win_get_option(0, opt)
+			end
 		end
 	else
 		win, buf, new = create_float(is_dir)
 	end
+	state.picker[1] = { win = win, buf = buf, id = id, winopts = wo }
 
 	if new then
-		id = fn.termopen(cfg.picker.cmd..startdir, {
+		state.picker[1].id = fn.termopen(cfg.picker.cmd..startdir, {
 			env = { TERM = term },
 			on_exit = on_exit,
 			on_stdout = on_stdout,
@@ -347,7 +358,6 @@ local function open_picker(is_dir)
 	end
 
 	window_setup()
-	state.picker[1] = { win = win, buf = buf, id = id }
 
 	if is_dir and not fullscreen then
 		restore_buffer(curwin, buf)
@@ -386,7 +396,7 @@ function M.toggle(mode, dir, auto)
 
 		open_explorer(tab, is_dir, empty)
 	elseif mode == "picker" then
-		open_picker(is_dir)
+		open_picker(is_dir, empty)
 	end
 end
 
@@ -500,7 +510,7 @@ end
 
 function M.setup(setup_cfg)
 	if setup_cfg then
-		cfg = vim.tbl_deep_extend("force", cfg, setup_cfg)
+		cfg = vim.tbl_deep_extend("force", cfg, setup_cfg) or cfg
 	end
 
 	bufopts = {
