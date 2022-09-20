@@ -1,19 +1,20 @@
-local api = vim.api
-local uv = vim.loop
-local cmd = vim.cmd
-local fn = vim.fn
-local schedule = vim.schedule
+local a = vim.api
+local o = vim.o
+local u = vim.loop
+local c = vim.cmd
+local f = vim.fn
+local S = vim.schedule
 local min = math.min
 local max = math.max
 local floor = math.floor
 -- forward declarations
-local nnnver, action, stdout, startdir, oppside, bufopts
-local targetwin = { win = api.nvim_get_current_win(), buf = api.nvim_get_current_buf() }
+local action, stdout, startdir, oppside, bufopts
+local targetwin = { win = a.nvim_get_current_win(), buf = a.nvim_get_current_buf() }
 local state = { explorer = {}, picker = {} }
 local M = { builtin = {} }
 -- initialization
-local pickertmp = fn.tempname().."-picker"
-local explorertmp = fn.tempname().."-explorer"
+local pickertmp = f.tempname().."-picker"
+local explorertmp = f.tempname().."-explorer"
 local nnnopts = os.getenv("NNN_OPTS")
 local nnntmpfile = os.getenv("NNN_TMPFILE") or
 		(os.getenv("XDG_CONFIG_HOME") or os.getenv("HOME").."/.config").."/nnn/.lastd"
@@ -60,61 +61,65 @@ local winopts = {
 
 -- Close nnn window(keeping buffer) and create new buffer if none left
 local function close(mode, tab)
-	if api.nvim_win_get_buf(state[mode][tab].win) ~= state[mode][tab].buf then
-		api.nvim_win_set_buf(state[mode][tab].win, state[mode][tab].buf)
+	if a.nvim_win_get_buf(state[mode][tab].win) ~= state[mode][tab].buf then
+		a.nvim_win_set_buf(state[mode][tab].win, state[mode][tab].buf)
 		return
 	end
 
-	if #api.nvim_tabpage_list_wins(0) == 1 then
-		api.nvim_win_set_buf(state[mode][tab].win, api.nvim_create_buf(false, false))
+	if #a.nvim_tabpage_list_wins(0) == 1 then
+		a.nvim_win_set_buf(state[mode][tab].win, a.nvim_create_buf(false, false))
 	else
-		api.nvim_win_hide(state[mode][tab].win)
+		a.nvim_win_hide(state[mode][tab].win)
 	end
 
 	state[mode][tab].win = nil
 	-- restore last known active window
-	if targetwin.win then api.nvim_set_current_win(targetwin.win) end
+	if targetwin.win then a.nvim_set_current_win(targetwin.win) end
 end
 
-local function handle_files(iter)
+local function handle_files(iter, mode, tab)
 	local files = {}
 	local empty, notnnn
-	local _, targetwintab = pcall(api.nvim_win_get_tabpage, targetwin.win)
+	local _, targetwintab = pcall(a.nvim_win_get_tabpage, targetwin.win)
+
 	 -- find window containing empty or non-nnn buffer
-	if not targetwin.win or targetwintab ~= api.nvim_get_current_tabpage()
-			or (api.nvim_buf_is_valid(targetwin.buf) and
-			api.nvim_buf_get_option(targetwin.buf, "filetype") == "nnn") then
+	if not targetwin.win or targetwintab ~= a.nvim_get_current_tabpage() then
 		targetwin.win = nil
-		for _, win in pairs(api.nvim_tabpage_list_wins(0)) do
-			if api.nvim_buf_get_name(api.nvim_win_get_buf(win)) == "" then
+		for _, win in pairs(a.nvim_tabpage_list_wins(0)) do
+			if a.nvim_buf_get_name(a.nvim_win_get_buf(win)) == "" then
 				empty = win
 				break
 			end
 
-			if api.nvim_buf_get_option(0, "filetype") ~= "nnn" then
+			if a.nvim_buf_get_option(0, "filetype") ~= "nnn" then
 				notnnn = win
 			end
 		end
 
 		if not empty and not notnnn then -- create new win
-			cmd(oppside..api.nvim_get_option("columns") - cfg.explorer.width - 1 .."vsplit")
-			targetwin.win = api.nvim_get_current_win()
+			c(oppside.. o.columns - cfg.explorer.width - 1 .."vsplit")
+			targetwin.win = a.nvim_get_current_win()
 		end
 	end
 
-	api.nvim_set_current_win(targetwin.win or empty or notnnn)
-	targetwin.win = api.nvim_get_current_win()
+	a.nvim_set_current_win(targetwin.win or empty or notnnn)
 
 	for file in iter do
 		if action then
-			files[#files + 1] = fn.fnameescape(file)
+			files[#files + 1] = f.fnameescape(file)
 		else
-			pcall(cmd, "edit "..fn.fnameescape(file))
+			pcall(c, "edit "..f.fnameescape(file))
 		end
 	end
 
+	if mode == "explorer" and state[mode][tab].fs then
+		a.nvim_win_close(state[mode][tab].win, { force = true })
+		M.toggle("explorer", false, false)
+		c("vert resize +1 | vert resize -1 | wincmd p")
+	end
+
 	if action then
-		schedule(function()
+		S(function()
 			action(files)
 			action = nil
 		end)
@@ -123,16 +128,17 @@ end
 
 -- Read fifo for explorer asynchronously with vim.loop
 local function read_fifo()
-	uv.fs_open(explorertmp, "r+", 438, function(ferr, fd)
+	local tab = cfg.explorer.tabs and a.nvim_get_current_tabpage()
+	u.fs_open(explorertmp, "r+", 438, function(ferr, fd)
 		if ferr then
-			schedule(function() print(ferr) end)
+			S(function() print(ferr) end)
 		else
-			local fpipe = uv.new_pipe(false)
+			local fpipe = u.new_pipe(false)
 			fpipe:open(fd)
 			fpipe:read_start(function(rerr, chunk)
 				if not rerr and chunk then
-					schedule(function()
-						handle_files(chunk:gmatch("[^\n]+"))
+					S(function()
+						handle_files(chunk:gmatch("[^\n]+"), "explorer", tab)
 					end)
 				else
 					fpipe:close()
@@ -143,60 +149,54 @@ local function read_fifo()
 end
 
 local function stat(name, type)
-  local stats = uv.fs_stat(name)
+  local stats = u.fs_stat(name)
   return stats and stats.type == type
 end
 
 -- on_exit callback for termopen
 local function on_exit(id, code)
-	local tab, win
+	local tabpage, win
 	local mode = state.picker[1] and state.picker[1].id == id and "picker" or "explorer"
 
 	if mode == "picker" then
-		tab = 1
+		tabpage = 1
 		win = state.picker[1].win
 	else
-		for tabpage, nstate in pairs(state.explorer) do
+		for tab, nstate in pairs(state.explorer) do
 			if nstate.id == id then
-				tab = tabpage
+				tabpage = tab
 				win = nstate.win
 				break
 			end
 		end
 	end
-	if not tab then return end
+	if not tabpage then return end
+	state[mode][tabpage] = {}
 
 	if code > 0 then
-		schedule(function() print(stdout and stdout[1]:sub(1, -2)) end)
+		S(function() print(stdout and stdout[1]:sub(1, -2)) end)
 	else
 		local fd, _ = io.open(nnntmpfile, "r")
 		if fd then
 			local dir = fd:read():sub(5, -2)
-			cmd(cfg.quitcd..fn.fnameescape(dir))
+			c(cfg.quitcd..f.fnameescape(dir))
 			fd:close()
 			os.remove(nnntmpfile)
 		end
 
-		if api.nvim_win_is_valid(win) then
-			if targetwin.win == win then
-				for opt, val in pairs(state[mode][tab].winopts) do
-					api.nvim_win_set_option(0, opt, val)
-				end
-			else
-				if #api.nvim_tabpage_list_wins(0) == 1 then
-					cmd("split")
-				end
-				api.nvim_win_hide(win)
+		if a.nvim_win_is_valid(win) then
+			if #a.nvim_tabpage_list_wins(0) == 1 then
+				c("split")
 			end
+			a.nvim_win_hide(win)
 		end
 
 		if mode == "picker" and stat(pickertmp, "file") then
-			handle_files(io.lines(pickertmp))
+			handle_files(io.lines(pickertmp), "picker", 1)
 		end
 	end
-	state[mode][tab] = {}
 	-- restore last known active window
-	if targetwin.win then api.nvim_set_current_win(targetwin.win) end
+	if targetwin then a.nvim_set_current_win(targetwin.win) end
 end
 
 -- on_stdout callback for error catching
@@ -205,91 +205,56 @@ local function on_stdout(_, data, _)
 end
 
 local function feedkeys(keys)
-	api.nvim_feedkeys(api.nvim_replace_termcodes(keys, true, true, true), "n", true)
+	a.nvim_feedkeys(a.nvim_replace_termcodes(keys, true, true, true), "n", true)
 end
 
 local function buffer_setup()
 	for opt, val in pairs(bufopts) do
-		api.nvim_buf_set_option(0, opt, val)
+		a.nvim_buf_set_option(0, opt, val)
 	end
 
 	for i, mapping in ipairs(cfg.mappings) do
-		api.nvim_buf_set_keymap(0, "t", mapping[1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping("..i..")<CR>", {})
+		a.nvim_buf_set_keymap(0, "t", mapping[1], "<C-\\><C-n><cmd>lua require('nnn').handle_mapping("..i..")<CR>", {})
 	end
 
-	api.nvim_buf_set_keymap(0, "t", cfg.windownav.left, "<C-\\><C-n><C-w>h", {})
-	api.nvim_buf_set_keymap(0, "t", cfg.windownav.right, "<C-\\><C-n><C-w>l", {})
-	api.nvim_buf_set_keymap(0, "t", cfg.windownav.next, "<C-\\><C-n><C-w>w", {})
-	api.nvim_buf_set_keymap(0, "t", cfg.windownav.prev, "<C-\\><C-n><C-w>W", {})
+	a.nvim_buf_set_keymap(0, "t", cfg.windownav.left, "<C-\\><C-n><C-w>h", {})
+	a.nvim_buf_set_keymap(0, "t", cfg.windownav.right, "<C-\\><C-n><C-w>l", {})
+	a.nvim_buf_set_keymap(0, "t", cfg.windownav.next, "<C-\\><C-n><C-w>w", {})
+	a.nvim_buf_set_keymap(0, "t", cfg.windownav.prev, "<C-\\><C-n><C-w>W", {})
 end
 
 local function window_setup()
 	for opt, val in pairs(winopts) do
-		api.nvim_win_set_option(0, opt, val)
+		a.nvim_win_set_option(0, opt, val)
 	end
-	cmd("startinsert")
+	c("startinsert")
 end
 
  -- Restore buffer to previous state
 local function restore_buffer(win, buf)
-	api.nvim_win_call(win, function()
-		cmd((api.nvim_buf_is_valid(targetwin.buf) and targetwin.buf ~= buf) and targetwin.buf.."buffer" or "enew")
+	a.nvim_win_call(win, function()
+		c((a.nvim_buf_is_valid(targetwin.buf) and targetwin.buf ~= buf) and targetwin.buf.."buffer" or "enew")
 	end)
 end
 
--- Open explorer split and set local buffer options and mappings
-local function open_explorer(tab, is_dir, empty)
-	local id = state.explorer[tab] and state.explorer[tab].id
-	local buf = state.explorer[tab] and state.explorer[tab].buf
-	local curwin = api.nvim_get_current_win()
-	local singlewin = #api.nvim_tabpage_list_wins(0) == 1
-
-	if not buf then
-		if not empty then
-			if is_dir and not singlewin then
-				cmd(cfg.explorer.side.." "..cfg.explorer.width.."vsplit")
-			elseif not is_dir then
-				cmd(cfg.explorer.side.." "..cfg.explorer.width.."vnew")
-			end
-		end
-
-		id = fn.termopen(cfg.explorer.cmd..startdir, {
-			env = { TERM = term, NNN_OPTS = exploreropts, NNN_FIFO = explorertmp },
-			on_exit = on_exit,
-			on_stdout = on_stdout,
-			stdout_buffered = true
-		})
-
-		buf = api.nvim_get_current_buf()
-		buffer_setup()
-		read_fifo()
-	else
-		cmd((empty and "" or (cfg.explorer.side.." "..cfg.explorer.width.."vsplit+"))..buf.."buffer")
-	end
-
-	window_setup()
-	state.explorer[tab] = { win = api.nvim_get_current_win(), buf = buf, id = id }
-
-	if is_dir and not empty and not singlewin then
-		restore_buffer(curwin, buf)
-	end
-end
-
 -- Calculate window size and return table
-local function get_win_size()
-	local wincfg = { relative = "editor" }
+local function get_win_size(fullscreen)
+	local lines = o.lines
+	local columns = o.columns
+	local wincfg = { relative = "editor", style = "minimal", height = lines, width = columns, row = 0, col = 0 }
 	local style = cfg.picker.style
-	local vim_height = api.nvim_get_option("lines")
-	local vim_width = api.nvim_get_option("columns")
 
-	wincfg.height = min(max(0, floor(style.height > 1 and style.height or (vim_height * style.height))), vim_height) - 1
-	wincfg.width = min(max(0, floor(style.width > 1 and style.width or (vim_width * style.width))), vim_width) - 1
+	if not fullscreen then
+		wincfg.height = min(max(0, floor(style.height > 1 and style.height or (lines * style.height))), lines) - 1
+		wincfg.width = min(max(0, floor(style.width > 1 and style.width or (columns * style.width))), columns) - 1
 
-	local row = floor(style.yoffset > 1 and style.yoffset or (style.yoffset * (vim_height - wincfg.height))) - 1
-	local col = floor(style.xoffset > 1 and style.xoffset or (style.xoffset * (vim_width - wincfg.width))) - 1
+		local row = floor(style.yoffset > 1 and style.yoffset or (style.yoffset * (lines - wincfg.height))) - 1
+		local col = floor(style.xoffset > 1 and style.xoffset or (style.xoffset * (columns - wincfg.width))) - 1
 
-	wincfg.row = min(max(0, row), vim_height - wincfg.height)
-	wincfg.col = min(max(0, col), vim_width - wincfg.width)
+		wincfg.row = min(max(0, row), lines - wincfg.height)
+		wincfg.col = min(max(0, col), columns - wincfg.width)
+		wincfg.border = cfg.picker.style.border
+	end
 
 	if cfg.offset then
 		local file = io.open(tmpdir.."/nnn-preview-tui-posoffset", "w")
@@ -302,50 +267,66 @@ local function get_win_size()
 	return wincfg
 end
 
--- Create floating window for NnnPicker
-local function create_float(is_dir)
-	local new
-	local buf = state.picker[1] and state.picker[1].buf
-	local wincfg = get_win_size()
-	wincfg.style = "minimal"
-	wincfg.border = cfg.picker.style.border
-
-	local win = api.nvim_open_win(0, true, wincfg)
+-- Create floating window
+local function create_float(mode, tab, is_dir, fullscreen)
+	local wincfg = get_win_size(fullscreen)
+	local win = a.nvim_open_win(0, true, wincfg)
+	local buf = state[mode][tab] and state[mode][tab].buf
 
 	if not buf then
-		buf = is_dir and api.nvim_get_current_buf() or api.nvim_create_buf(true, false)
-		cmd("keepalt buffer"..buf)
-		new = true
+		buf = is_dir and a.nvim_get_current_buf() or a.nvim_create_buf(true, false)
+		c("keepalt buffer"..buf)
+		wincfg = false
 	end
 
-	return win, buf, new
+	return win, buf, not wincfg
+end
+
+-- Open explorer split and set local buffer options and mappings
+local function open_explorer(tab, is_dir, empty)
+	local id = state.explorer[tab] and state.explorer[tab].id
+	local buf = state.explorer[tab] and state.explorer[tab].buf
+	local curwin = a.nvim_get_current_win()
+	local fs = #a.nvim_tabpage_list_wins(0) == 1 and empty
+
+	if fs then
+		create_float("explorer", tab, is_dir, true)
+	else
+		c(cfg.explorer.side.." "..cfg.explorer.width.."vnew")
+	end
+
+	if not buf then
+		id = f.termopen(cfg.explorer.cmd..startdir, {
+			env = { TERM = term, NNN_OPTS = exploreropts, NNN_FIFO = explorertmp },
+			on_exit = on_exit,
+			on_stdout = on_stdout,
+			stdout_buffered = true
+		})
+
+		buf = a.nvim_get_current_buf()
+		buffer_setup()
+		read_fifo()
+	else
+		c("buffer"..buf)
+	end
+
+	window_setup()
+	state.explorer[tab] = { win = a.nvim_get_current_win(), buf = buf, id = id, fs = fs }
+
+	if is_dir and not fs then
+		restore_buffer(curwin, buf)
+	end
 end
 
 -- Open picker float and set local buffer options and mappings
 local function open_picker(is_dir, empty)
-	local new, win
 	local id = state.picker[1] and state.picker[1].id
-	local buf = state.picker[1] and state.picker[1].buf
-	local wo = state.picker[1] and state.picker[1].winopts or {}
-	local curwin = api.nvim_get_current_win()
-	local fullscreen = (is_dir or empty) and (#api.nvim_tabpage_list_wins(0) == 1)
-
-	if fullscreen then
-		win = curwin
-		new = not (state.picker[1] and state.picker[1].buf)
-		buf = state.picker[1] and state.picker[1].buf or api.nvim_get_current_buf()
-		if new then
-			for opt, _ in pairs(winopts) do
-				wo[opt] = api.nvim_win_get_option(0, opt)
-			end
-		end
-	else
-		win, buf, new = create_float(is_dir)
-	end
-	state.picker[1] = { win = win, buf = buf, id = id, winopts = wo }
+	local curwin = a.nvim_get_current_win()
+	local fs = #a.nvim_tabpage_list_wins(0) == 1 and empty
+	local win, buf, new = create_float("picker", 1, is_dir, fs)
 
 	if new then
-		state.picker[1].id = fn.termopen(cfg.picker.cmd..startdir, {
+		id = f.termopen(cfg.picker.cmd..startdir, {
 			env = { TERM = term },
 			on_exit = on_exit,
 			on_stdout = on_stdout,
@@ -354,46 +335,41 @@ local function open_picker(is_dir, empty)
 
 		buffer_setup()
 	else
-		api.nvim_win_set_buf(win, buf)
+		a.nvim_win_set_buf(win, buf)
 	end
 
 	window_setup()
+	state.picker[1] = { win = win, buf = buf, id = id, fs = fs }
 
-	if is_dir and not fullscreen then
+	if is_dir then
 		restore_buffer(curwin, buf)
 	end
 end
 
 -- Toggle explorer/picker windows, keeping buffers
 function M.toggle(mode, dir, auto)
-	local bufname = api.nvim_buf_get_name(0)
-	local empty = bufname == ""
+	local bufname = a.nvim_buf_get_name(0)
 	local is_dir = stat(bufname, "directory")
-	local tab = mode == "explorer" and cfg.explorer.tabs and api.nvim_get_current_tabpage() or 1
+	local empty = (is_dir and f.bufname("#") or bufname) == ""
+	local tab = mode == "explorer" and cfg.explorer.tabs and a.nvim_get_current_tabpage() or 1
 
 	if auto == "netrw" then
 		if not is_dir then return end
 		if state[mode][tab] and state[mode][tab].buf then
-			api.nvim_buf_delete(state[mode][tab].buf, { force = true })
+			a.nvim_buf_delete(state[mode][tab].buf, { force = true })
 			state[mode][tab] = {}
 		end
 	elseif (auto == "setup" or auto == "tab") and (cfg.auto_open.empty and (not empty and not is_dir) or
-			vim.tbl_contains(cfg.auto_open.ft_ignore, api.nvim_buf_get_option(0, "filetype"))) then return
+			vim.tbl_contains(cfg.auto_open.ft_ignore, a.nvim_buf_get_option(0, "filetype"))) then return
 	end
 
-	startdir = " "..fn.fnameescape(dir and fn.expand(dir) or is_dir and bufname or fn.getcwd()).." "
+	startdir = " "..f.fnameescape(dir and f.expand(dir) or is_dir and bufname or f.getcwd()).." "
 	local win = state[mode][tab] and state[mode][tab].win
-	win = cfg.explorer.tabs and win or vim.tbl_contains(api.nvim_tabpage_list_wins(0), win)
+	win = cfg.explorer.tabs and win or vim.tbl_contains(a.nvim_tabpage_list_wins(0), win)
 
-	if win and api.nvim_win_is_valid(win) then
+	if win and a.nvim_win_is_valid(win) then
 		close(mode, tab)
 	elseif mode == "explorer" then
-		if not nnnver or nnnver < 4.3 then
-			print("NnnExplorer requires nnn version >= v4.3. Currently installed: "..
-					(nnnver and ("v"..nnnver) or "none"))
-			return
-		end
-
 		open_explorer(tab, is_dir, empty)
 	elseif mode == "picker" then
 		open_picker(is_dir, empty)
@@ -408,88 +384,74 @@ end
 
 -- WinEnter callback to save target window filtering out nnn windows
 function M.win_enter()
-	schedule(function()
-		if api.nvim_buf_get_option(api.nvim_win_get_buf(0), "filetype") ~= "nnn" then
-			targetwin.win = api.nvim_get_current_win()
-			targetwin.buf = api.nvim_get_current_buf()
-		elseif #api.nvim_tabpage_list_wins(0) == 1 then
+	S(function()
+		if a.nvim_buf_get_option(a.nvim_win_get_buf(0), "filetype") ~= "nnn" then
+			targetwin.win = a.nvim_get_current_win()
+			targetwin.buf = a.nvim_get_current_buf()
+		elseif #a.nvim_tabpage_list_wins(0) == 1 then
 			targetwin.win = nil
 		end
 	end)
 end
 
--- WinNew callback to ensure explorer mode has the configured layout
-function M.win_new()
-	schedule(function()
-		local tab = cfg.explorer.tabs and api.nvim_get_current_tabpage() or 1
-		local win = state.explorer[tab] and state.explorer[tab].win
-		if win then
-			api.nvim_win_call(win, function()
-				cmd("wincmd "..(cfg.explorer.side:match("to.*") and "H" or "L"))
-			end)
-			api.nvim_win_set_width(win, cfg.explorer.width)
-		end
-	end)
-end
-
 -- WinClosed callback for auto_close to close tabpage or quit vim
-function M.win_closed(win)
-	if api.nvim_win_get_config(win).zindex then return end
-	schedule(function()
-		if api.nvim_buf_get_option(0, "filetype") ~= "nnn" then return end
-		if #api.nvim_tabpage_list_wins(0) == 1 then
-			feedkeys("<C-\\><C-n><cmd>q<CR>")
+function M.win_closed()
+	S(function()
+		if a.nvim_buf_get_option(0, "filetype") ~= "nnn" then return end
+		local wins = 0
+		-- Count non-floating windows
+		for _, win in ipairs(a.nvim_tabpage_list_wins(0)) do
+			if not a.nvim_win_get_config(win).zindex then
+				wins = wins + 1
+			end
 		end
+		-- Close if last non-floating window
+		if wins == 1 then feedkeys("<C-\\><C-n><cmd>q<CR>") end
 	end)
 end
 
 -- TabClosed callback to clear tab from state
 function M.tab_closed(tab)
 	local buf = state.explorer[tab] and state.explorer[tab].buf
-	if buf and api.nvim_buf_is_valid(buf) then
-		 api.nvim_buf_delete(buf, { force = true })
+	if buf and a.nvim_buf_is_valid(buf) then
+		 a.nvim_buf_delete(buf, { force = true })
 	end
 end
 
 -- VimResized callback to resize picker window
 function M.vim_resized()
 	local win = state and state.picker and state.picker[1].win
-	if win then api.nvim_win_set_config(win, get_win_size()) end
+	if win then a.nvim_win_set_config(win, get_win_size()) end
 end
 
 -- Builtin mapping functions
 local function open_in(files, command)
 	for _, file in ipairs(files) do
-		cmd(command.." "..file)
+		c(command.." "..file)
 	end
 end
 
 function M.builtin.open_in_split(files) open_in(files, "split") end
 function M.builtin.open_in_vsplit(files) open_in(files, "vsplit") end
 function M.builtin.open_in_tab(files)
-	cmd("tabnew")
+	c("tabnew")
 	open_in(files, "edit")
 	feedkeys("<C-\\><C-n><C-w>h")
 end
 
 function M.builtin.open_in_preview(files)
-	local previewbuf = api.nvim_get_current_buf()
-	local previewname = api.nvim_buf_get_name(previewbuf)
+	local previewbuf = a.nvim_get_current_buf()
+	local previewname = a.nvim_buf_get_name(previewbuf)
 
 	if previewname == files[1] then return end
-
-	cmd("edit "..files[1])
-
-	if previewname ~= "" then
-		api.nvim_buf_delete(previewbuf, {})
-	end
-
-	cmd("wincmd p")
+	c("edit "..files[1])
+	if previewname ~= "" then a.nvim_buf_delete(previewbuf, {}) end
+	c("wincmd p")
 end
 
 function M.builtin.copy_to_clipboard(files)
 	files = table.concat(files, "\n")
-	fn.setreg("+", files)
+	f.setreg("+", files)
 	vim.defer_fn(function() print(files:gsub("\n", ", ").." copied to register") end, 0)
 end
 
@@ -499,7 +461,7 @@ function M.builtin.cd_to_path(files)
 
 	if read ~= nil then
 		io.close(read)
-		fn.execute("cd "..dir)
+		f.execute("cd "..dir)
 		vim.defer_fn(function() print("working directory changed to: "..dir) end, 0)
 	end
 end
@@ -509,9 +471,7 @@ function M.builtin.populate_cmdline(files)
 end
 
 function M.setup(setup_cfg)
-	if setup_cfg then
-		cfg = vim.tbl_deep_extend("force", cfg, setup_cfg) or cfg
-	end
+	if setup_cfg then cfg = vim.tbl_deep_extend("force", cfg, setup_cfg) end
 
 	bufopts = {
 		buftype = "terminal",
@@ -525,21 +485,14 @@ function M.setup(setup_cfg)
 		vim.g.loaded_netrwPlugin = 1
 		vim.g.loaded_netrwSettings = 1
 		vim.g.loaded_netrwFileHandlers = 1
-		pcall(api.nvim_clear_autocmds, { group = "FileExplorer" })
+		pcall(a.nvim_clear_autocmds, { group = "FileExplorer" })
 
-		schedule(function()
+		S(function()
 			M.toggle(cfg.replace_netrw, nil, "netrw")
-			api.nvim_create_autocmd({ "BufEnter", "BufNewFile" }, { callback = function()
+			a.nvim_create_autocmd({ "BufEnter", "BufNewFile" }, { callback = function()
 				require("nnn").toggle(cfg.replace_netrw, nil, "netrw")
 			end})
 		end)
-	end
-
-	-- Version check for explorer mode
-	local verfd = io.popen("nnn -V")
-	if verfd then
-		nnnver = tonumber(verfd:read())
-		verfd:close()
 	end
 
 	-- Setup sessionfile name and remove on exit
@@ -551,13 +504,13 @@ function M.setup(setup_cfg)
 	if cfg.picker.session == "shared" or cfg.explorer.session == "shared" then
 		pickersession = " -S -s "..sessionfile
 		explorersession = pickersession
-		api.nvim_create_autocmd("VimLeavePre", { command = "call delete(fnameescape('"..sessionfile.."'))" })
+		a.nvim_create_autocmd("VimLeavePre", { command = "call delete(fnameescape('"..sessionfile.."'))" })
 	else
 		if cfg.picker.session == "global" then
 			pickersession = " -S "
 		elseif cfg.picker.session == "local" then
 			pickersession = " -S -s "..sessionfile.."-picker "
-		api.nvim_create_autocmd("VimLeavePre", { command = "call delete(fnameescape('"..sessionfile.."-picker'))" })
+		a.nvim_create_autocmd("VimLeavePre", { command = "call delete(fnameescape('"..sessionfile.."-picker'))" })
 		else
 			pickersession = " "
 		end
@@ -566,72 +519,67 @@ function M.setup(setup_cfg)
 			explorersession = " -S "
 		elseif cfg.explorer.session == "local" then
 			explorersession = " -S -s "..sessionfile.."-explorer "
-		api.nvim_create_autocmd("VimLeavePre", { command = "call delete(fnameescape('"..sessionfile.."-explorer'))" })
+		a.nvim_create_autocmd("VimLeavePre", { command = "call delete(fnameescape('"..sessionfile.."-explorer'))" })
 		else
 			explorersession = " "
 		end
 	end
 
-	if not stat(explorertmp, "fifo") then
-		os.execute("mkfifo "..explorertmp)
-	end
+	if not stat(explorertmp, "fifo") then os.execute("mkfifo "..explorertmp) end
 
 	oppside = cfg.explorer.side:match("to") and "botright " or "topleft "
 	cfg.picker.cmd = cfg.picker.cmd.." -p "..pickertmp..pickersession
 	cfg.explorer.cmd = cfg.explorer.cmd.." -F1 "..explorersession
 
-	if cfg.auto_open.setup and not (cfg.replace_netrw and stat(api.nvim_buf_get_name(0), "directory")) then
-		schedule(function() M.toggle(cfg.auto_open.setup, nil, "setup") end)
+	if cfg.auto_open.setup and not (cfg.replace_netrw and stat(a.nvim_buf_get_name(0), "directory")) then
+		S(function() M.toggle(cfg.auto_open.setup, nil, "setup") end)
 	end
 
 	if cfg.auto_close then
-		api.nvim_create_autocmd("WinClosed", { callback = function(args)
-			require("nnn").win_closed(tonumber(args.match))
+		a.nvim_create_autocmd("WinClosed", { callback = function()
+			require("nnn").win_closed()
 		end})
 	end
 
 	if cfg.auto_open.tabpage then
-		api.nvim_create_autocmd("TabNewEntered", { callback = function()
+		a.nvim_create_autocmd("TabNewEntered", { callback = function()
 			vim.schedule(function() require("nnn").toggle(cfg.auto_open.tabpage, nil, "tab") end)
 		end})
 	end
 
-	api.nvim_create_user_command("NnnPicker", function(opts)
+	a.nvim_create_user_command("NnnPicker", function(opts)
 		require("nnn").toggle("picker", opts.args)
 	end, { nargs = "*" })
-	api.nvim_create_user_command("NnnExplorer", function(opts)
+	a.nvim_create_user_command("NnnExplorer", function(opts)
 		require("nnn").toggle("explorer", opts.args)
 	end, { nargs = "*" })
 
-	local group = api.nvim_create_augroup("nnn", { clear = true })
-	api.nvim_create_autocmd("WinEnter", { group = group, callback = function()
+	local group = a.nvim_create_augroup("nnn", { clear = true })
+	a.nvim_create_autocmd("WinEnter", { group = group, callback = function()
 		require("nnn").win_enter()
 	end})
-	api.nvim_create_autocmd("WinNew", { group = group, callback = function()
-		require("nnn").win_new()
-	end})
-	api.nvim_create_autocmd("TermClose", { group = group, callback = function()
-		if api.nvim_buf_get_option(0, "filetype") == "nnn" then
-			api.nvim_buf_delete(0, { force = true })
+	a.nvim_create_autocmd("TermClose", { group = group, callback = function()
+		if a.nvim_buf_get_option(0, "filetype") == "nnn" then
+			a.nvim_buf_delete(0, { force = true })
 		end
 	end})
-	api.nvim_create_autocmd("BufEnter", { group = group, callback = function()
-		if api.nvim_buf_get_option(0, "filetype") == "nnn" then
+	a.nvim_create_autocmd("BufEnter", { group = group, callback = function()
+		if a.nvim_buf_get_option(0, "filetype") == "nnn" then
 			vim.cmd("startinsert")
 		end
 	end})
-	api.nvim_create_autocmd("VimResized", { group = group, callback = function()
-		if api.nvim_buf_get_option(0, "filetype") == "nnn" then
+	a.nvim_create_autocmd("VimResized", { group = group, callback = function()
+		if a.nvim_buf_get_option(0, "filetype") == "nnn" then
 			require("nnn").vim_resized()
 		end
 	end})
-	api.nvim_create_autocmd("TabClosed", { group = group, callback = function(args)
+	a.nvim_create_autocmd("TabClosed", { group = group, callback = function(args)
 		require("nnn").tab_closed(tonumber(args.file))
 	end})
 
-	api.nvim_set_hl(0, "NnnBorder", { link = "FloatBorder", default = true })
-	api.nvim_set_hl(0, "NnnNormal", { link = "Normal", default = true })
-	api.nvim_set_hl(0, "NnnNormalNC", { link = "Normal", default = true })
+	a.nvim_set_hl(0, "NnnBorder", { link = "FloatBorder", default = true })
+	a.nvim_set_hl(0, "NnnNormal", { link = "Normal", default = true })
+	a.nvim_set_hl(0, "NnnNormalNC", { link = "Normal", default = true })
 end
 
 return M
