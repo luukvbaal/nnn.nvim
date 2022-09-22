@@ -268,18 +268,18 @@ local function get_win_size(fullscreen)
 end
 
 -- Create floating window
-local function create_float(mode, tab, is_dir, fullscreen)
+local function create_float(mode, tab, is_dir, empty, fullscreen)
 	local wincfg = get_win_size(fullscreen)
-	local win = a.nvim_open_win(0, true, wincfg)
 	local buf = state[mode][tab] and state[mode][tab].buf
+	local new = false
 
 	if not buf then
 		buf = is_dir and a.nvim_get_current_buf() or a.nvim_create_buf(true, false)
-		c("keepalt buffer"..buf)
-		wincfg = false
+		if empty then c("keepalt buffer"..buf) end
+		new = true
 	end
 
-	return win, buf, not wincfg
+	return a.nvim_open_win(buf, true, wincfg), buf, new
 end
 
 -- Open explorer split and set local buffer options and mappings
@@ -290,7 +290,7 @@ local function open_explorer(tab, is_dir, empty)
 	local fs = #a.nvim_tabpage_list_wins(0) == 1 and empty
 
 	if fs then
-		create_float("explorer", tab, is_dir, true)
+		create_float("explorer", tab, is_dir, empty, true)
 	else
 		c(cfg.explorer.side.." "..cfg.explorer.width..((buf or is_dir) and "vsplit" or "vnew"))
 	end
@@ -323,7 +323,7 @@ local function open_picker(is_dir, empty)
 	local id = state.picker[1] and state.picker[1].id
 	local curwin = a.nvim_get_current_win()
 	local fs = #a.nvim_tabpage_list_wins(0) == 1 and empty
-	local win, buf, new = create_float("picker", 1, is_dir, fs)
+	local win, buf, new = create_float("picker", 1, is_dir, empty, fs)
 
 	if new then
 		id = f.termopen(cfg.picker.cmd..startdir, {
@@ -396,6 +396,7 @@ end
 
 -- WinClosed callback for auto_close to close tabpage or quit vim
 function M.win_closed()
+	if a.nvim_win_get_config(0).zindex then return end
 	S(function()
 		if a.nvim_buf_get_option(0, "filetype") ~= "nnn" then return end
 		local wins = 0
