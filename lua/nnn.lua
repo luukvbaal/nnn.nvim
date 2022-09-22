@@ -292,7 +292,7 @@ local function open_explorer(tab, is_dir, empty)
 	if fs then
 		create_float("explorer", tab, is_dir, true)
 	else
-		c(cfg.explorer.side.." "..cfg.explorer.width.."vnew")
+		c(cfg.explorer.side.." "..cfg.explorer.width..((buf or is_dir) and "vsplit" or "vnew"))
 	end
 
 	if not buf then
@@ -313,7 +313,7 @@ local function open_explorer(tab, is_dir, empty)
 	window_setup()
 	state.explorer[tab] = { win = a.nvim_get_current_win(), buf = buf, id = id, fs = fs }
 
-	if is_dir and not fs then
+	if is_dir then
 		restore_buffer(curwin, buf)
 	end
 end
