@@ -189,6 +189,11 @@ local function on_exit(id, code)
 				c("split")
 			end
 			a.nvim_win_hide(win)
+			-- Delete empty buffer, not sure what creates it.
+			local bufs = a.nvim_list_bufs()
+			if a.nvim_buf_get_name(bufs[#bufs]) == "" then
+				a.nvim_buf_delete(bufs[#bufs], {})
+			end
 		end
 
 		if mode == "picker" and stat(pickertmp, "file") then
@@ -221,13 +226,6 @@ local function buffer_setup()
 	a.nvim_buf_set_keymap(0, "t", cfg.windownav.right, "<C-\\><C-n><C-w>l", {})
 	a.nvim_buf_set_keymap(0, "t", cfg.windownav.next, "<C-\\><C-n><C-w>w", {})
 	a.nvim_buf_set_keymap(0, "t", cfg.windownav.prev, "<C-\\><C-n><C-w>W", {})
-end
-
-local function window_setup()
-	for opt, val in pairs(winopts) do
-		a.nvim_win_set_option(0, opt, val)
-	end
-	c("startinsert")
 end
 
  -- Restore buffer to previous state
@@ -268,78 +266,54 @@ local function get_win_size(fullscreen)
 end
 
 -- Create floating window
-local function create_float(mode, tab, is_dir, empty, fullscreen)
-	local wincfg = get_win_size(fullscreen)
+local function create_win(mode, tab, is_dir, fullscreen)
 	local buf = state[mode][tab] and state[mode][tab].buf
-	local new = false
+	local new, win, wincfg
 
 	if not buf then
 		buf = is_dir and a.nvim_get_current_buf() or a.nvim_create_buf(true, false)
-		if empty then c("keepalt buffer"..buf) end
 		new = true
 	end
 
-	return a.nvim_open_win(buf, true, wincfg), buf, new
+	if mode == "picker" or fullscreen then
+		wincfg = get_win_size(fullscreen)
+		win = a.nvim_open_win(buf, true, wincfg)
+	else
+		c(cfg.explorer.side.." "..cfg.explorer.width.."vsplit")
+		win = a.nvim_get_current_win()
+	end
+
+	return win, buf, new
 end
 
 -- Open explorer split and set local buffer options and mappings
-local function open_explorer(tab, is_dir, empty)
-	local id = state.explorer[tab] and state.explorer[tab].id
-	local buf = state.explorer[tab] and state.explorer[tab].buf
+local function open(mode, tab, is_dir, empty)
+	local id = state[mode][tab] and state[mode][tab].id
 	local curwin = a.nvim_get_current_win()
 	local fs = #a.nvim_tabpage_list_wins(0) == 1 and empty
-
-	if fs then
-		create_float("explorer", tab, is_dir, empty, true)
-	else
-		c(cfg.explorer.side.." "..cfg.explorer.width..((buf or is_dir) and "vsplit" or "vnew"))
-	end
-
-	if not buf then
-		id = f.termopen(cfg.explorer.cmd..startdir, {
-			env = { TERM = term, NNN_OPTS = exploreropts, NNN_FIFO = explorertmp },
-			on_exit = on_exit,
-			on_stdout = on_stdout,
-			stdout_buffered = true
-		})
-
-		buf = a.nvim_get_current_buf()
-		buffer_setup()
-		read_fifo()
-	else
-		c("buffer"..buf)
-	end
-
-	window_setup()
-	state.explorer[tab] = { win = a.nvim_get_current_win(), buf = buf, id = id, fs = fs }
-
-	if is_dir then
-		restore_buffer(curwin, buf)
-	end
-end
-
--- Open picker float and set local buffer options and mappings
-local function open_picker(is_dir, empty)
-	local id = state.picker[1] and state.picker[1].id
-	local curwin = a.nvim_get_current_win()
-	local fs = #a.nvim_tabpage_list_wins(0) == 1 and empty
-	local win, buf, new = create_float("picker", 1, is_dir, empty, fs)
+	local win, buf, new = create_win(mode, tab, is_dir, fs)
 
 	if new then
-		id = f.termopen(cfg.picker.cmd..startdir, {
-			env = { TERM = term },
+		id = f.termopen(cfg[mode].cmd..startdir, {
+			env = (mode == "picker" and { TERM = term } or
+				{ TERM = term, NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }),
 			on_exit = on_exit,
 			on_stdout = on_stdout,
 			stdout_buffered = true
 		})
 
 		buffer_setup()
+		if mode == "explorer" then read_fifo() end
 	else
 		a.nvim_win_set_buf(win, buf)
 	end
 
-	window_setup()
-	state.picker[1] = { win = win, buf = buf, id = id, fs = fs }
+	for opt, val in pairs(winopts) do
+		a.nvim_win_set_option(0, opt, val)
+	end
+
+	state[mode][tab] = { win = win, buf = buf, id = id, fs = fs }
+	c("startinsert")
 
 	if is_dir then
 		restore_buffer(curwin, buf)
@@ -369,10 +343,8 @@ function M.toggle(mode, dir, auto)
 
 	if win and a.nvim_win_is_valid(win) then
 		close(mode, tab)
-	elseif mode == "explorer" then
-		open_explorer(tab, is_dir, empty)
-	elseif mode == "picker" then
-		open_picker(is_dir, empty)
+	else
+		open(mode, tab, is_dir, empty)
 	end
 end
 
