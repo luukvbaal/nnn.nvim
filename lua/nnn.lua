@@ -265,28 +265,32 @@ local function get_win_size(fullscreen)
 	return wincfg
 end
 
--- Create floating window
+-- Create window and return window/buffer id
 local function create_win(mode, tab, is_dir, fullscreen)
 	local buf = state[mode][tab] and state[mode][tab].buf
-	local new, win, wincfg
-
-	if not buf then
-		buf = is_dir and a.nvim_get_current_buf() or a.nvim_create_buf(true, false)
-		new = true
-	end
+	local new = not buf
+	local win, wincfg
 
 	if mode == "picker" or fullscreen then
+		if new then
+			buf = is_dir and a.nvim_get_current_buf() or a.nvim_create_buf(true, false)
+		end
 		wincfg = get_win_size(fullscreen)
 		win = a.nvim_open_win(buf, true, wincfg)
 	else
-		c(cfg.explorer.side.." "..cfg.explorer.width.."vsplit")
+		if new then
+			c(cfg.explorer.side.." "..cfg.explorer.width..(is_dir and "vsplit" or "vnew"))
+			buf = a.nvim_get_current_buf()
+		else
+			c(cfg.explorer.side.." "..cfg.explorer.width.."vsplit")
+		end
 		win = a.nvim_get_current_win()
 	end
 
 	return win, buf, new
 end
 
--- Open explorer split and set local buffer options and mappings
+-- Open nnn in terminal window and set window/buffer options.
 local function open(mode, tab, is_dir, empty)
 	local id = state[mode][tab] and state[mode][tab].id
 	local curwin = a.nvim_get_current_win()
