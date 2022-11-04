@@ -46,7 +46,7 @@ local cfg = {
 	mappings = {},
 	windownav = { left = "<C-w>h", right = "<C-w>l", next = "<C-w>w", prev = "<C-w>W" },
 	buflisted = false,
-	quitcd = "tcd",
+	quitcd = nil,
 	offset = false,
 }
 
@@ -176,12 +176,13 @@ local function on_exit(id, code)
 	if code > 0 then
 		S(function() print(stdout and stdout[1]:sub(1, -2)) end)
 	else
-		local fd, _ = io.open(nnntmpfile, "r")
-		if fd then
-			local dir = fd:read():sub(5, -2)
-			c(cfg.quitcd..f.fnameescape(dir))
-			fd:close()
-			os.remove(nnntmpfile)
+		if cfg.quitcd then
+			local fd, _ = io.open(nnntmpfile, "r")
+			if fd then
+				c(cfg.quitcd..f.fnameescape(fd:read():sub(5, -2)))
+				fd:close()
+				os.remove(nnntmpfile)
+			end
 		end
 
 		if a.nvim_win_is_valid(win) then
