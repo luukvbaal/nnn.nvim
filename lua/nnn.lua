@@ -299,9 +299,9 @@ local function open(mode, tab, is_dir, empty)
 	local win, buf, new = create_win(mode, tab, is_dir, fs)
 
 	if new then
-		id = f.termopen(cfg[mode].cmd..startdir, {
-			env = (mode == "picker" and { TERM = term } or
-				{ TERM = term, NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }),
+		id = f.termopen("echo '\x1b[?1002h' && " .. cfg[mode].cmd..startdir, {
+			env = (mode == "picker" and nil or
+				{ NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }),
 			on_exit = on_exit,
 			on_stdout = on_stdout,
 			stdout_buffered = true
