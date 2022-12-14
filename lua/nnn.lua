@@ -28,12 +28,14 @@ local cfg = {
 		width = 24,
 		side = "topleft",
 		session = "",
-		tabs = true
+		tabs = true,
+		fullscreen= true,
 	},
 	picker = {
 		cmd = "nnn",
 		style = { width = 0.9, height = 0.8, xoffset = 0.5, yoffset = 0.5, border = "single" },
 		session = "",
+		fullscreen= true,
 	},
 	auto_open = {
 		setup = nil,
@@ -295,7 +297,7 @@ end
 local function open(mode, tab, is_dir, empty)
 	local id = state[mode][tab] and state[mode][tab].id
 	local curwin = a.nvim_get_current_win()
-	local fs = #a.nvim_tabpage_list_wins(0) == 1 and empty
+	local fs = cfg[mode].fullscreen and #a.nvim_tabpage_list_wins(0) == 1 and empty
 	local win, buf, new = create_win(mode, tab, is_dir, fs)
 
 	if new then
