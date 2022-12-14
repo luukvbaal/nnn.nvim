@@ -80,7 +80,7 @@ DEFAULT OPTIONS ~
             side = "topleft",  -- or "botright", location of the explorer window
             session = "",      -- or "global" / "local" / "shared"
             tabs = true,       -- seperate nnn instance per tab
-            fullscreen_on_empty = true, -- whether to fullscreen nnn window when tab is empty
+            fullscreen = true, -- whether to fullscreen explorer window when current tab is empty
         },
         picker = {
             cmd = "nnn",       -- command override (-p flag is implied)
@@ -92,7 +92,7 @@ DEFAULT OPTIONS ~
                 border = "single"-- border decoration for example "rounded"(:h nvim_open_win)
             },
             session = "",      -- or "global" / "local" / "shared"
-            fullscreen_on_empty = true, -- whether to fullscreen nnn window when tab is empty
+            fullscreen = true, -- whether to fullscreen picker window when current tab is empty
         },
         auto_open = {
             setup = nil,       -- or "explorer" / "picker", auto open on setup function
