@@ -85,6 +85,7 @@ local cfg = {
 		side = "topleft",  -- or "botright", location of the explorer window
 		session = "",      -- or "global" / "local" / "shared"
 		tabs = true,       -- seperate nnn instance per tab
+		fullscreen = true, -- whether to fullscreen explorer window when current tab is empty
 	},
 	picker = {
 		cmd = "nnn",       -- command override (-p flag is implied)
@@ -96,6 +97,7 @@ local cfg = {
 			border = "single"-- border decoration for example "rounded"(:h nvim_open_win)
 		},
 		session = "",      -- or "global" / "local" / "shared"
+		fullscreen = true, -- whether to fullscreen picker window when current tab is empty
 	},
 	auto_open = {
 		setup = nil,       -- or "explorer" / "picker", auto open on setup function
