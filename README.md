@@ -49,7 +49,7 @@ The plugin offers two possible modes of operation.
 
 Run command `:NnnExplorer` to open nnn in a vertical split simliar to `NERDTree`/`nvim-tree`.
 
-In this mode, the plugin makes use of nnn's `-F` flag to listen for opened files. Pressing <kdb>Enter</kbd> on a file will open that file in a new buffer, while keeping the nnn window open.
+In this mode, the plugin makes use of nnn's `-F` flag to listen for opened files. Pressing <kbd>Enter</kbd> on a file will open that file in a new buffer, while keeping the nnn window open.
 
 
 ### Picker Mode
@@ -68,7 +68,7 @@ Bind `NnnExplorer/NnnPicker` to toggle the plugin on/off in normal and terminal 
 
 ### Custom Command Argument
 
-Additionally, passing `cmd=<custom command` as argument will override the configured nnn command. This allows you to for example run one-off nnn commands with different option flags. `:NnnExplorer cmd=nnn\ -Pf /mnt` will open explorer mode in `/mnt` and run the nnn plugin mapped to <kbd>f</kbd>. Spaces in the `cmd` string must be escaped.
+Additionally, passing `cmd=<custom command>` as argument will override the configured nnn command. This allows you to for example run one-off nnn commands with different option flags. `:NnnExplorer cmd=nnn\ -Pf /mnt` will open explorer mode in `/mnt` and run the nnn plugin mapped to <kbd>f</kbd>. Spaces in the `cmd` string must be escaped.
 
 ```vim
 tnoremap <C-A-n> <cmd>NnnExplorer<CR>
