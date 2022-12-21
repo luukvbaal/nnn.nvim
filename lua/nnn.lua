@@ -8,7 +8,7 @@ local min = math.min
 local max = math.max
 local floor = math.floor
 -- forward declarations
-local action, stdout, startdir, oppside, bufopts
+local action, stdout, startdir, oppside, bufopts, pickersession, explorersession, argcmd
 local targetwin = { win = a.nvim_get_current_win(), buf = a.nvim_get_current_buf() }
 local state = { explorer = {}, picker = {} }
 local M = { builtin = {} }
@@ -301,13 +301,15 @@ local function open(mode, tab, is_dir, empty)
 	local win, buf, new = create_win(mode, tab, is_dir, fs)
 
 	if new then
-		id = f.termopen(cfg[mode].cmd..startdir, {
+		local cmd = argcmd and argcmd or cfg[mode].cmd
+		id = f.termopen(cmd..startdir, {
 			env = (mode == "picker" and { TERM = term } or
 				{ TERM = term, NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }),
 			on_exit = on_exit,
 			on_stdout = on_stdout,
 			stdout_buffered = true
 		})
+		argcmd = nil
 
 		buffer_setup()
 		if mode == "explorer" then read_fifo() end
@@ -328,11 +330,23 @@ local function open(mode, tab, is_dir, empty)
 end
 
 -- Toggle explorer/picker windows, keeping buffers
-function M.toggle(mode, dir, auto)
+function M.toggle(mode, fargs, auto)
+	local dir
 	local bufname = a.nvim_buf_get_name(0)
 	local is_dir = stat(bufname, "directory")
 	local empty = (is_dir and f.bufname("#") or bufname) == ""
 	local tab = mode == "explorer" and cfg.explorer.tabs and a.nvim_get_current_tabpage() or 1
+
+	if fargs then
+		for _, arg in ipairs(fargs) do
+			if arg:find("^cmd=") then
+				argcmd = arg:sub(5)..(mode == "picker" and (" -p "..pickertmp..pickersession)
+																								or (" -F1 "..explorersession))
+			else
+				dir = arg
+			end
+		end
+	end
 
 	if auto == "netrw" then
 		if not is_dir then return end
@@ -476,7 +490,6 @@ function M.setup(setup_cfg)
 	end
 
 	-- Setup sessionfile name and remove on exit
-	local pickersession, explorersession
 	local sessionfile = os.getenv("XDG_CONFIG_HOME")
 	sessionfile = (sessionfile and sessionfile or (os.getenv("HOME").."/.config"))..
 			"/nnn/sessions/nnn.nvim-"..os.date("%Y-%m-%d_%H-%M-%S")
@@ -528,10 +541,10 @@ function M.setup(setup_cfg)
 	end
 
 	a.nvim_create_user_command("NnnPicker", function(opts)
-		require("nnn").toggle("picker", opts.args)
+		require("nnn").toggle("picker", opts.fargs)
 	end, { nargs = "*" })
 	a.nvim_create_user_command("NnnExplorer", function(opts)
-		require("nnn").toggle("explorer", opts.args)
+		require("nnn").toggle("explorer", opts.fargs)
 	end, { nargs = "*" })
 
 	local group = a.nvim_create_augroup("nnn", { clear = true })

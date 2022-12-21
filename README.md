@@ -66,6 +66,10 @@ In both modes it's possible to [select](https://github.com/jarun/nnn/wiki/concep
 
 Bind `NnnExplorer/NnnPicker` to toggle the plugin on/off in normal and terminal mode. The commands accept a path as optional argument. To always open nnn in the directory of the currently active buffer, use `%:p:h` as argument:
 
+### Custom Command Argument
+
+Additionally, passing `cmd=<custom command` as argument will override the configured nnn command. This allows you to for example run one-off nnn commands with different option flags. `:NnnExplorer cmd=nnn\ -Pf /mnt` will open explorer mode in `/mnt` and run the nnn plugin mapped to <kbd>f</kbd>. Spaces in the `cmd` string must be escaped.
+
 ```vim
 tnoremap <C-A-n> <cmd>NnnExplorer<CR>
 nnoremap <C-A-n> <cmd>NnnExplorer %:p:h<CR>
