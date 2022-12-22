@@ -36,7 +36,7 @@ Run command `:NnnExplorer` to open nnn in a vertical split simliar to
 `NERDTree`/`nvim-tree`.
 
 In this mode, the plugin makes use of nnn’s `-F` flag to listen for opened
-files. Pressing <kdb>Enter on a file will open that file in a new buffer, while
+files. Pressing Enter on a file will open that file in a new buffer, while
 keeping the nnn window open.
 
 PICKER MODE ~
@@ -62,7 +62,7 @@ the directory of the currently active buffer, use `%:p:h` as argument:
 
 CUSTOM COMMAND ARGUMENT ~
 
-Additionally, passing `cmd=<custom command` as argument will override the
+Additionally, passing `cmd=<custom command>` as argument will override the
 configured nnn command. This allows you to for example run one-off nnn commands
 with different option flags. `:NnnExplorer cmd=nnn\ -Pf /mnt` will open
 explorer mode in `/mnt` and run the nnn plugin mapped to f. Spaces in the `cmd`
