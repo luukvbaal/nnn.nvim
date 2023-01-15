@@ -358,7 +358,7 @@ function M.toggle(mode, fargs, auto)
 			vim.tbl_contains(cfg.auto_open.ft_ignore, a.nvim_buf_get_option(0, "filetype"))) then return
 	end
 
-	startdir = " "..f.fnameescape(dir and f.expand(dir) or is_dir and bufname or f.getcwd()).." "
+	startdir = " "..f.shellescape(dir and f.expand(dir) or is_dir and bufname or f.getcwd()).." "
 	local win = state[mode][tab] and state[mode][tab].win
 	win = cfg.explorer.tabs and win or vim.tbl_contains(a.nvim_tabpage_list_wins(0), win)
 
