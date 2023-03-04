@@ -53,8 +53,10 @@ local cfg = {
 }
 
 local winopts = {
+	foldcolumn = "0",
 	number = false,
 	relativenumber = false,
+	spell = false,
 	wrap = false,
 	winfixwidth = true,
 	winfixheight = true,
