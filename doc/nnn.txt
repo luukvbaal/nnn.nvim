@@ -4,17 +4,18 @@
 Table of Contents                                      *nnn-table-of-contents*
 
 1. nnn.nvim                                                     |nnn-nnn.nvim|
-  - Install                                                      |nnn-install|
-  - Usage                                                          |nnn-usage|
-  - Configuration                                          |nnn-configuration|
-  - Tips and tricks                                      |nnn-tips-and-tricks|
+  - Install                                             |nnn-nnn.nvim-install|
+  - Usage                                                 |nnn-nnn.nvim-usage|
+  - Configuration                                 |nnn-nnn.nvim-configuration|
+  - Tips and tricks                             |nnn-nnn.nvim-tips-and-tricks|
 
 ==============================================================================
 1. nnn.nvim                                                     *nnn-nnn.nvim*
 
 File manager for Neovim powered by nnn <https://github.com/jarun/nnn>.
 
-INSTALL                                                          *nnn-install*
+
+INSTALL                                                 *nnn-nnn.nvim-install*
 
 Requires nnn to be installed, follow the instructions
 <https://github.com/jarun/nnn/wiki/Usage#installation>.
@@ -26,9 +27,11 @@ packages
 <https://software.opensuse.org//download.html?project=home%3Astig124%3Annn&package=nnn>
 or build from source <https://github.com/jarun/nnn/wiki/Usage#from-source>.
 
-USAGE                                                              *nnn-usage*
+
+USAGE                                                     *nnn-nnn.nvim-usage*
 
 The plugin offers two possible modes of operation.
+
 
 EXPLORER MODE ~
 
@@ -39,6 +42,7 @@ In this mode, the plugin makes use of nnn’s `-F` flag to listen for opened
 files. Pressing Enter on a file will open that file in a new buffer, while
 keeping the nnn window open.
 
+
 PICKER MODE ~
 
 Run command `:NnnPicker` to open nnn in a floating window.
@@ -47,6 +51,7 @@ In this mode nnn’s `-p` flag is used to listen for opened files on program
 exit. Picker mode implies only a single selection will be made before quitting
 nnn and thus the floating window.
 
+
 SELECTION ~
 
 In both modes it’s possible to select
@@ -54,11 +59,13 @@ In both modes it’s possible to select
 pressing Enter. Doing so will open the entire selection all at once, excluding
 the hovered file.
 
+
 BINDINGS ~
 
 Bind `NnnExplorer/NnnPicker` to toggle the plugin on/off in normal and terminal
 mode. The commands accept a path as optional argument. To always open nnn in
 the directory of the currently active buffer, use `%:p:h` as argument:
+
 
 CUSTOM COMMAND ARGUMENT ~
 
@@ -68,7 +75,7 @@ with different option flags. `:NnnExplorer cmd=nnn\ -Pf /mnt` will open
 explorer mode in `/mnt` and run the nnn plugin mapped to f. Spaces in the `cmd`
 string must be escaped.
 
->
+>vim
     tnoremap <C-A-n> <cmd>NnnExplorer<CR>
     nnoremap <C-A-n> <cmd>NnnExplorer %:p:h<CR>
     tnoremap <C-A-p> <cmd>NnnPicker<CR>
@@ -76,11 +83,12 @@ string must be escaped.
 <
 
 
-CONFIGURATION                                              *nnn-configuration*
+CONFIGURATION                                     *nnn-nnn.nvim-configuration*
+
 
 DEFAULT OPTIONS ~
 
->
+>lua
     local cfg = {
         explorer = {
             cmd = "nnn",       -- command overrride (-F1 flag is implied, -a flag is invalid!)
@@ -125,11 +133,10 @@ DEFAULT OPTIONS ~
     }
 <
 
-
 Edit (part of) this table to your preferences and pass it to the `setup()`
 function i.e.:
 
->
+>lua
     require("nnn").setup({
         picker = {
             cmd = "tmux new-session nnn -Pp",
@@ -148,7 +155,7 @@ It’s possible to map custom lua functions to keys which are passed the
 selected file or active nnn selection. A set of builtin functions is provided
 which can be used as follows:
 
->
+>lua
         local builtin = require("nnn").builtin
         mappings = {
             { "<C-t>", builtin.open_in_tab },       -- open file(s) in tab
@@ -161,12 +168,12 @@ which can be used as follows:
         }
 <
 
-
 To create your own function mapping follow the function signature of the
 builtin functions which are passed a table of file names.
 
 Note that in both picker and explorer mode, the mapping will execute on the nnn
 selection if it exists.
+
 
 SESSION ~
 
@@ -177,13 +184,16 @@ Alternatively you can set the session `"shared"` to share the same session
 between both explorer and picker mode (setting either one to "shared" will make
 the session shared).
 
+
 COLORS ~
 
 Three highlight groups `NnnNormal`, `NnnNormalNC` and `NnnBorder` are available
 to configure the colors for the active, inactive and picker window borders
 respectively.
 
-TIPS AND TRICKS                                          *nnn-tips-and-tricks*
+
+TIPS AND TRICKS                                 *nnn-nnn.nvim-tips-and-tricks*
+
 
 GIT STATUS ~
 
@@ -192,6 +202,7 @@ install nnn with the gitstatus
 <https://github.com/jarun/nnn/blob/master/patches/gitstatus/mainline.diff>
 enable git status symbols in detail mode. Add the `-G` flag to your command
 override to also enable symbols in normal mode.
+
 
 PREVIEW-TUI ~
 
