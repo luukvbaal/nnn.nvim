@@ -8,7 +8,7 @@ local min = math.min
 local max = math.max
 local floor = math.floor
 -- forward declarations
-local action, stdout, startdir, oppside, bufopts, pickersession, explorersession, argcmd
+local action, stdout, startdir, oppside, pickersession, explorersession, argcmd
 local targetwin = { win = a.nvim_get_current_win(), buf = a.nvim_get_current_buf() }
 local state = { explorer = {}, picker = {} }
 local M = { builtin = {} }
@@ -62,6 +62,8 @@ local winopts = {
 	winfixheight = true,
 	winhighlight = "Normal:NnnNormal,NormalNC:NnnNormalNC,FloatBorder:NnnBorder",
 }
+
+local bufopts = { filetype = "nnn" }
 
 -- Close nnn window(keeping buffer) and create new buffer if none left
 local function close(mode, tab)
@@ -277,21 +279,17 @@ local function create_win(mode, tab, is_dir, fullscreen)
 	local new = not buf
 	local win, wincfg
 
+	if new then
+		buf = is_dir and a.nvim_get_current_buf() or a.nvim_create_buf(cfg.buflisted, false)
+	end
 	if mode == "picker" or fullscreen then
-		if new then
-			buf = is_dir and a.nvim_get_current_buf() or a.nvim_create_buf(true, false)
-		end
 		wincfg = get_win_size(fullscreen)
 		win = a.nvim_open_win(buf, true, wincfg)
 	else
-		if new then
-			c(cfg.explorer.side.." "..cfg.explorer.width..(is_dir and "vsplit" or "vnew"))
-			buf = a.nvim_get_current_buf()
-		else
-			c(cfg.explorer.side.." "..cfg.explorer.width.."vsplit")
-		end
+		c(cfg.explorer.side.." "..cfg.explorer.width.."vsplit")
 		win = a.nvim_get_current_win()
 	end
+	a.nvim_win_set_buf(win, buf)
 
 	return win, buf, new
 end
@@ -469,12 +467,6 @@ end
 
 function M.setup(setup_cfg)
 	if setup_cfg then cfg = vim.tbl_deep_extend("force", cfg, setup_cfg) end
-
-	bufopts = {
-		buftype = "terminal",
-		filetype = "nnn",
-		buflisted = cfg.buflisted
-	}
 
 	-- Replace netrw plugin if config is set
 	if cfg.replace_netrw then
