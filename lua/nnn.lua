@@ -413,10 +413,18 @@ function M.tab_closed(tab)
 	end
 end
 
--- VimResized callback to resize picker window
+-- VimResized callback to resize floating window
 function M.vim_resized()
-	local win = state and state.picker and state.picker[1].win
-	if win then a.nvim_win_set_config(win, get_win_size()) end
+	local win, fs
+	if state.picker[1] then
+		fs = state.picker[1].fs
+		win = state.picker[1].win
+	else
+		local tab = cfg.explorer.tabs and a.nvim_get_current_tabpage() or 1
+		fs = state.explorer[tab] and state.explorer[tab].fs
+		win = fs and state.explorer[tab] and state.explorer[tab].win or nil
+	end
+	if win and a.nvim_win_is_valid(win) then a.nvim_win_set_config(win, get_win_size(fs)) end
 end
 
 -- Builtin mapping functions
