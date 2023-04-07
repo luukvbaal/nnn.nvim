@@ -250,7 +250,9 @@ local function get_win_size(fullscreen)
 	local wincfg = { relative = "editor", style = "minimal", height = lines, width = columns, row = 0, col = 0 }
 	local style = cfg.picker.style
 
-	if not fullscreen then
+	if fullscreen then
+		wincfg.height = wincfg.height - o.cmdheight
+	else
 		wincfg.height = min(max(0, floor(style.height > 1 and style.height or (lines * style.height))), lines) - 1
 		wincfg.width = min(max(0, floor(style.width > 1 and style.width or (columns * style.width))), columns) - 1
 
