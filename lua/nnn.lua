@@ -16,8 +16,8 @@ local M = { builtin = {} }
 local pickertmp = f.tempname().."-picker"
 local explorertmp = f.tempname().."-explorer"
 local nnnopts = os.getenv("NNN_OPTS")
-local nnntmpfile = os.getenv("NNN_TMPFILE") or
-		(os.getenv("XDG_CONFIG_HOME") or os.getenv("HOME").."/.config").."/nnn/.lastd"
+local xdgcfg = os.getenv("XDG_CONFIG_HOME") or os.getenv("HOME").."/.config"
+local nnntmpfile = os.getenv("NNN_TMPFILE") or xdgcfg.."/nnn/.lastd"
 local tmpdir = os.getenv("TMPDIR") or "/tmp"
 local term = os.getenv("TERM")
 local exploreropts = nnnopts and nnnopts:gsub("a", "") or ""
@@ -305,7 +305,9 @@ local function open(mode, tab, is_dir, empty)
 
 	if new then
 		local cmd = argcmd and argcmd or cfg[mode].cmd
-		id = f.termopen(cmd..startdir, {
+		if startdir then cmd = cmd.." "..f.shellescape(startdir) end
+		id = f.termopen(cmd, {
+			cwd = not startdir and f.getcwd() or nil,
 			env = (mode == "picker" and { TERM = term } or
 				{ TERM = term, NNN_OPTS = exploreropts, NNN_FIFO = explorertmp }),
 			on_exit = on_exit,
@@ -361,7 +363,7 @@ function M.toggle(mode, fargs, auto)
 			vim.tbl_contains(cfg.auto_open.ft_ignore, a.nvim_buf_get_option(0, "filetype"))) then return
 	end
 
-	startdir = " "..f.shellescape(dir and f.expand(dir) or is_dir and bufname or f.getcwd()).." "
+	startdir = dir and f.expand(dir) or is_dir and bufname
 	local win = state[mode][tab] and state[mode][tab].win
 	win = cfg.explorer.tabs and win or vim.tbl_contains(a.nvim_tabpage_list_wins(0), win)
 
@@ -494,21 +496,19 @@ function M.setup(setup_cfg)
 		end)
 	end
 
-	-- Setup sessionfile name and remove on exit
-	local sessionfile = os.getenv("XDG_CONFIG_HOME")
-	sessionfile = (sessionfile and sessionfile or (os.getenv("HOME").."/.config"))..
-			"/nnn/sessions/nnn.nvim-"..os.date("%Y-%m-%d_%H-%M-%S")
-
+	-- Setup session name and remove on exit
+	local session = "nnn.nvim-"..os.date("%Y-%m-%d_%H-%M-%S")
+	local sessionpath = f.fnameescape(xdgcfg.."/nnn/sessions/"..session)
 	if cfg.picker.session == "shared" or cfg.explorer.session == "shared" then
-		pickersession = " -S -s "..sessionfile
+		pickersession = " -S -s "..session
 		explorersession = pickersession
-		a.nvim_create_autocmd("VimLeavePre", { command = "call delete(fnameescape('"..sessionfile.."'))" })
+		a.nvim_create_autocmd("VimLeavePre", { command = "call delete('"..sessionpath.."')" })
 	else
 		if cfg.picker.session == "global" then
 			pickersession = " -S "
 		elseif cfg.picker.session == "local" then
-			pickersession = " -S -s "..sessionfile.."-picker "
-		a.nvim_create_autocmd("VimLeavePre", { command = "call delete(fnameescape('"..sessionfile.."-picker'))" })
+			pickersession = " -S -s "..session.."-picker"
+			a.nvim_create_autocmd("VimLeavePre", { command = "call delete('"..sessionpath.."-picker')" })
 		else
 			pickersession = " "
 		end
@@ -516,8 +516,8 @@ function M.setup(setup_cfg)
 		if cfg.explorer.session == "global" then
 			explorersession = " -S "
 		elseif cfg.explorer.session == "local" then
-			explorersession = " -S -s "..sessionfile.."-explorer "
-		a.nvim_create_autocmd("VimLeavePre", { command = "call delete(fnameescape('"..sessionfile.."-explorer'))" })
+			explorersession = " -S -s "..session.."-explorer "
+			a.nvim_create_autocmd("VimLeavePre", { command = "call delete('"..sessionpath.."-explorer')" })
 		else
 			explorersession = " "
 		end
