@@ -47,7 +47,7 @@ The plugin offers two possible modes of operation.
 
 ### Explorer Mode
 
-Run command `:NnnExplorer` to open nnn in a vertical split simliar to `NERDTree`/`nvim-tree`.
+Run command `:NnnExplorer` to open nnn in a vertical split similar to `NERDTree`/`nvim-tree`.
 
 In this mode, the plugin makes use of nnn's `-F` flag to listen for opened files. Pressing <kbd>Enter</kbd> on a file will open that file in a new buffer, while keeping the nnn window open.
 
@@ -84,11 +84,11 @@ nnoremap <C-A-p> <cmd>NnnPicker<CR>
 ```lua
 local cfg = {
   explorer = {
-    cmd = "nnn",       -- command overrride (-F1 flag is implied, -a flag is invalid!)
+    cmd = "nnn",       -- command override (-F1 flag is implied, -a flag is invalid!)
     width = 24,        -- width of the vertical split
     side = "topleft",  -- or "botright", location of the explorer window
     session = "",      -- or "global" / "local" / "shared"
-    tabs = true,       -- seperate nnn instance per tab
+    tabs = true,       -- separate nnn instance per tab
     fullscreen = true, -- whether to fullscreen explorer window when current tab is empty
   },
   picker = {
