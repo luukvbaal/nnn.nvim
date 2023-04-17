@@ -35,7 +35,7 @@ The plugin offers two possible modes of operation.
 
 EXPLORER MODE ~
 
-Run command `:NnnExplorer` to open nnn in a vertical split simliar to
+Run command `:NnnExplorer` to open nnn in a vertical split similar to
 `NERDTree`/`nvim-tree`.
 
 In this mode, the plugin makes use of nnn’s `-F` flag to listen for opened
@@ -91,11 +91,11 @@ DEFAULT OPTIONS ~
 >lua
     local cfg = {
       explorer = {
-        cmd = "nnn",       -- command overrride (-F1 flag is implied, -a flag is invalid!)
+        cmd = "nnn",       -- command override (-F1 flag is implied, -a flag is invalid!)
         width = 24,        -- width of the vertical split
         side = "topleft",  -- or "botright", location of the explorer window
         session = "",      -- or "global" / "local" / "shared"
-        tabs = true,       -- seperate nnn instance per tab
+        tabs = true,       -- separate nnn instance per tab
         fullscreen = true, -- whether to fullscreen explorer window when current tab is empty
       },
       picker = {
