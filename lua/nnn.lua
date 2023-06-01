@@ -134,7 +134,7 @@ end
 
 -- Read fifo for explorer asynchronously with vim.loop
 local function read_fifo()
-  local tab = cfg.explorer.tabs and a.nvim_get_current_tabpage()
+  local tab = cfg.explorer.tabs and a.nvim_get_current_tabpage() or 1
   u.fs_open(explorertmp, "r+", 438, function(ferr, fd)
     if ferr then
       S(function() print(ferr) end)
