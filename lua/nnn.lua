@@ -99,7 +99,7 @@ local function handle_files(iter, mode)
         break
       end
 
-      if a.nvim_buf_get_option(0, "filetype") ~= "nnn" then
+      if o.filetype ~= "nnn" then
         notnnn = win
       end
     end
@@ -229,7 +229,7 @@ end
 
 local function buffer_setup()
   for opt, val in pairs(bufopts) do
-    a.nvim_buf_set_option(0, opt, val)
+    a.nvim_set_option_value(opt, val, {scope = "local"})
   end
 
   local opts = {noremap = true}
@@ -332,13 +332,13 @@ local function open(mode, tab, is_dir, empty)
     argcmd = nil
 
     buffer_setup()
-    if mode == "explorer" then read_fifo(tab) end
+    if mode == "explorer" then read_fifo() end
   else
     a.nvim_win_set_buf(win, buf)
   end
 
   for opt, val in pairs(winopts) do
-    a.nvim_win_set_option(0, opt, val)
+    a.nvim_set_option_value(opt, val, {scope = "local"})
   end
 
   state[mode][tab] = {win = win, buf = buf, id = id, fs = fs}
@@ -375,7 +375,7 @@ function M.toggle(mode, fargs, auto)
       state[mode][tab] = {}
     end
   elseif (auto == "setup" or auto == "tab") and (cfg.auto_open.empty and (not empty and not is_dir) or
-      vim.tbl_contains(cfg.auto_open.ft_ignore, a.nvim_buf_get_option(0, "filetype"))) then
+      vim.tbl_contains(cfg.auto_open.ft_ignore, o.filetype)) then
     return
   end
 
@@ -398,7 +398,7 @@ end
 -- WinEnter callback to save target window filtering out nnn windows
 function M.win_enter()
   S(function()
-    if a.nvim_buf_get_option(a.nvim_win_get_buf(0), "filetype") ~= "nnn" then
+    if o.filetype ~= "nnn" then
       targetwin.win = a.nvim_get_current_win()
       targetwin.buf = a.nvim_get_current_buf()
     elseif #a.nvim_tabpage_list_wins(0) == 1 then
@@ -411,7 +411,7 @@ end
 function M.win_closed()
   if a.nvim_win_get_config(0).zindex then return end
   S(function()
-    if a.nvim_buf_get_option(0, "filetype") ~= "nnn" then return end
+    if o.filetype ~= "nnn" then return end
     local wins = 0
     -- Count non-floating windows
     for _, win in ipairs(a.nvim_tabpage_list_wins(0)) do
@@ -585,7 +585,7 @@ function M.setup(setup_cfg)
   a.nvim_create_autocmd("TermClose", {
     group = group,
     callback = function()
-      if a.nvim_buf_get_option(0, "filetype") == "nnn" then
+      if o.filetype == "nnn" then
         a.nvim_buf_delete(0, {force = true})
       end
     end,
@@ -593,7 +593,7 @@ function M.setup(setup_cfg)
   a.nvim_create_autocmd("BufEnter", {
     group = group,
     callback = function()
-      if a.nvim_buf_get_option(0, "filetype") == "nnn" then
+      if o.filetype == "nnn" then
         vim.cmd("startinsert")
       end
     end,
@@ -601,7 +601,7 @@ function M.setup(setup_cfg)
   a.nvim_create_autocmd("VimResized", {
     group = group,
     callback = function()
-      if a.nvim_buf_get_option(0, "filetype") == "nnn" then
+      if o.filetype == "nnn" then
         require("nnn").vim_resized()
       end
     end,
