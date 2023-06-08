@@ -35,6 +35,7 @@ local cfg = {
     cmd = "nnn",
     style = {width = 0.9, height = 0.8, xoffset = 0.5, yoffset = 0.5, border = "single"},
     session = "",
+    tabs = true,
     fullscreen = true,
   },
   auto_open = {
@@ -83,13 +84,14 @@ local function close(mode, tab)
   if targetwin.win then a.nvim_set_current_win(targetwin.win) end
 end
 
-local function handle_files(iter, mode, tab)
+local function handle_files(iter, mode)
   local files = {}
   local empty, notnnn
+  local tab = a.nvim_get_current_tabpage()
   local _, targetwintab = pcall(a.nvim_win_get_tabpage, targetwin.win)
 
   -- find window containing empty or non-nnn buffer
-  if not targetwin.win or targetwintab ~= a.nvim_get_current_tabpage() then
+  if not targetwin.win or tab ~= targetwintab then
     targetwin.win = nil
     for _, win in pairs(a.nvim_tabpage_list_wins(0)) do
       if a.nvim_buf_get_name(a.nvim_win_get_buf(win)) == "" then
@@ -118,6 +120,7 @@ local function handle_files(iter, mode, tab)
     end
   end
 
+  -- Close and re-open explorer when it was fullscreen
   if mode == "explorer" and state[mode][tab].fs then
     a.nvim_win_close(state[mode][tab].win, {force = true})
     M.toggle("explorer", false, false)
@@ -134,7 +137,6 @@ end
 
 -- Read fifo for explorer asynchronously with vim.loop
 local function read_fifo()
-  local tab = cfg.explorer.tabs and a.nvim_get_current_tabpage() or 1
   u.fs_open(explorertmp, "r+", 438, function(ferr, fd)
     if ferr then
       S(function() print(ferr) end)
@@ -148,7 +150,7 @@ local function read_fifo()
       fpipe:read_start(function(rerr, chunk)
         if not rerr and chunk then
           S(function()
-            handle_files(chunk:gmatch("[^\n]+"), "explorer", tab)
+            handle_files(chunk:gmatch("[^\n]+"), "explorer")
           end)
         else
           fpipe:close()
@@ -163,25 +165,26 @@ local function stat(name, type)
   return stats and stats.type == type
 end
 
--- on_exit callback for termopen
-local function on_exit(id, code)
-  local tabpage, win
-  local mode = state.picker[1] and state.picker[1].id == id and "picker" or "explorer"
-
-  if mode == "picker" then
-    tabpage = 1
-    win = state.picker[1].win
-  else
-    for tab, nstate in pairs(state.explorer) do
-      if nstate.id == id then
-        tabpage = tab
-        win = nstate.win
-        break
-      end
+-- Find tab and window which matches the on_exit jobid
+local function find_tabwin(id, mode)
+  for tab, nstate in pairs(state[mode]) do
+    if nstate.id == id then
+      return tab, nstate.win
     end
   end
-  if not tabpage then return end
-  state[mode][tabpage] = {}
+end
+
+-- on_exit callback for termopen
+local function on_exit(id, code)
+  local mode = "explorer"
+  local tab, win = find_tabwin(id, mode)
+  if not tab then
+    mode = "picker"
+    tab, win = find_tabwin(id, mode)
+  end
+  if not tab then return end
+
+  state[mode][tab] = {}
 
   if code > 0 then
     S(function() print(stdout and stdout[1]:sub(1, -2)) end)
@@ -208,7 +211,7 @@ local function on_exit(id, code)
     end
 
     if mode == "picker" and stat(pickertmp, "file") then
-      handle_files(io.lines(pickertmp), "picker", 1)
+      handle_files(io.lines(pickertmp), "picker")
     end
   end
   -- restore last known active window
@@ -279,9 +282,17 @@ local function get_win_size(fullscreen)
   return wincfg
 end
 
+-- Return the local or global buffer depending on cfg[mode].tabs
+local function find_buf(mode, tab)
+  if cfg[mode].tabs then return state[mode][tab] and state[mode][tab].buf end
+  for _, nstate in pairs(state[mode]) do
+    if nstate.buf then return nstate.buf end
+  end
+end
+
 -- Create window and return window/buffer id
 local function create_win(mode, tab, is_dir, fullscreen)
-  local buf = state[mode][tab] and state[mode][tab].buf
+  local buf = find_buf(mode, tab)
   local new = not buf
   local win, wincfg
 
@@ -321,7 +332,7 @@ local function open(mode, tab, is_dir, empty)
     argcmd = nil
 
     buffer_setup()
-    if mode == "explorer" then read_fifo() end
+    if mode == "explorer" then read_fifo(tab) end
   else
     a.nvim_win_set_buf(win, buf)
   end
@@ -344,7 +355,7 @@ function M.toggle(mode, fargs, auto)
   local bufname = a.nvim_buf_get_name(0)
   local is_dir = stat(bufname, "directory")
   local empty = (is_dir and f.bufname("#") or bufname) == ""
-  local tab = mode == "explorer" and cfg.explorer.tabs and a.nvim_get_current_tabpage() or 1
+  local tab = a.nvim_get_current_tabpage()
 
   if fargs then
     for _, arg in ipairs(fargs) do
@@ -370,7 +381,6 @@ function M.toggle(mode, fargs, auto)
 
   startdir = dir and f.expand(dir) or is_dir and bufname
   local win = state[mode][tab] and state[mode][tab].win
-  win = cfg.explorer.tabs and win or vim.tbl_contains(a.nvim_tabpage_list_wins(0), win)
 
   if win and a.nvim_win_is_valid(win) then
     close(mode, tab)
@@ -425,11 +435,11 @@ end
 -- VimResized callback to resize floating window
 function M.vim_resized()
   local win, fs
-  if state.picker[1] then
-    fs = state.picker[1].fs
-    win = state.picker[1].win
+  local tab = a.nvim_get_current_tabpage()
+  if state.picker[tab] then
+    fs = state.picker[tab].fs
+    win = state.picker[tab].win
   else
-    local tab = cfg.explorer.tabs and a.nvim_get_current_tabpage() or 1
     fs = state.explorer[tab] and state.explorer[tab].fs
     win = fs and state.explorer[tab] and state.explorer[tab].win or nil
   end

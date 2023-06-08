@@ -101,6 +101,7 @@ local cfg = {
       border = "single"-- border decoration for example "rounded"(:h nvim_open_win)
     },
     session = "",      -- or "global" / "local" / "shared"
+    tabs = true,       -- separate nnn instance per tab
     fullscreen = true, -- whether to fullscreen picker window when current tab is empty
   },
   auto_open = {
