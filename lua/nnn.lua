@@ -351,11 +351,18 @@ end
 
 -- Toggle explorer/picker windows, keeping buffers
 function M.toggle(mode, fargs, auto)
+  local tab = a.nvim_get_current_tabpage()
+  local win = state[mode][tab] and state[mode][tab].win
+
+  if win and a.nvim_win_is_valid(win) then
+    close(mode, tab)
+    return
+  end
+
   local dir
   local bufname = a.nvim_buf_get_name(0)
   local is_dir = stat(bufname, "directory")
   local empty = (is_dir and f.bufname("#") or bufname) == ""
-  local tab = a.nvim_get_current_tabpage()
 
   if fargs then
     for _, arg in ipairs(fargs) do
@@ -380,13 +387,7 @@ function M.toggle(mode, fargs, auto)
   end
 
   startdir = dir and f.expand(dir) or is_dir and bufname
-  local win = state[mode][tab] and state[mode][tab].win
-
-  if win and a.nvim_win_is_valid(win) then
-    close(mode, tab)
-  else
-    open(mode, tab, is_dir, empty)
-  end
+  open(mode, tab, is_dir, empty)
 end
 
 -- Handle user defined mappings
