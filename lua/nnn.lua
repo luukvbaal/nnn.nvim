@@ -16,7 +16,7 @@ local M = {builtin = {}}
 local pickertmp = f.tempname().."-picker"
 local explorertmp = f.tempname().."-explorer"
 local nnnopts = os.getenv("NNN_OPTS")
-local xdgcfg = os.getenv("XDG_CONFIG_HOME") or os.getenv("HOME").."/.config"
+local xdgcfg = os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") or "").."/.config"
 local nnntmpfile = os.getenv("NNN_TMPFILE") or xdgcfg.."/nnn/.lastd"
 local tmpdir = os.getenv("TMPDIR") or "/tmp"
 local term = os.getenv("TERM")
