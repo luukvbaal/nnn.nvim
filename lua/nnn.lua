@@ -323,7 +323,7 @@ local function open(mode, tab, is_dir, empty)
     if startdir then cmd = cmd.." "..f.shellescape(startdir) end
     id = f.termopen(cmd, {
       cwd = not startdir and f.getcwd() or nil,
-      env = (mode == "picker" and {TERM = term} or
+      env = (mode == "picker" and {TERM = term, NNN_OPTS = ""} or
           {TERM = term, NNN_OPTS = exploreropts, NNN_FIFO = explorertmp}),
       on_exit = on_exit,
       on_stdout = on_stdout,
