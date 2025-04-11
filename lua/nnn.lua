@@ -215,7 +215,7 @@ local function on_exit(id, code)
     end
   end
   -- restore last known active window
-  if targetwin then a.nvim_set_current_win(targetwin.win) end
+  if targetwin.win then a.nvim_set_current_win(targetwin.win) end
 end
 
 -- on_stdout callback for error catching
