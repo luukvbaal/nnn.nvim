@@ -123,8 +123,8 @@ local function handle_files(iter, mode)
   -- Close and re-open explorer when it was fullscreen
   if mode == "explorer" and state[mode][tab].fs then
     a.nvim_win_close(state[mode][tab].win, {force = true})
-    M.toggle("explorer", false, false)
-    c("vert resize +1 | vert resize -1 | wincmd p")
+    M.toggle("explorer")
+    c('wincmd p')
   end
 
   if action then
@@ -354,7 +354,7 @@ function M.toggle(mode, fargs, auto)
   local tab = a.nvim_get_current_tabpage()
   local win = state[mode][tab] and state[mode][tab].win
 
-  if win and a.nvim_win_is_valid(win) then
+  if not auto and win and a.nvim_win_is_valid(win) then
     close(mode, tab)
     return
   end
